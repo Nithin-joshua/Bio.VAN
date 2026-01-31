@@ -1,62 +1,78 @@
 import React, { useRef, useEffect } from 'react';
 
+/**
+ * Waveform Visualization Component
+ * Renders a real-time oscilloscope-style waveform of audio input.
+ * Shows a subtle noise pattern when idle, and active waveform when recording.
+ */
 const Waveform = ({ audioData, isActive }) => {
   const canvasRef = useRef(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    const width = canvas.width;
-    const height = canvas.height;
+    const canvasContext = canvas.getContext('2d');
+    const canvasWidth = canvas.width;
+    const canvasHeight = canvas.height;
 
-    // Clear canvas
-    ctx.fillStyle = '#020b14'; // Theme background
-    ctx.fillRect(0, 0, width, height);
+    // Clear the canvas with dark background (matches cyberpunk theme)
+    canvasContext.fillStyle = '#020b14';
+    canvasContext.fillRect(0, 0, canvasWidth, canvasHeight);
 
     if (!isActive || audioData.length === 0) {
-      // Draw static noise line (Idle State)
-      ctx.beginPath();
-      ctx.lineWidth = 1;
-      ctx.strokeStyle = '#004d61';
+      // IDLE STATE: Draw subtle noise to show system is "listening"
+      // This creates a "standby" effect like old CRT monitors
+      canvasContext.beginPath();
+      canvasContext.lineWidth = 1;
+      canvasContext.strokeStyle = '#004d61'; // Dim cyan for idle state
 
-      let x = 0;
-      ctx.moveTo(0, height / 2);
+      let xPosition = 0;
+      canvasContext.moveTo(0, canvasHeight / 2);
 
-      // Simulate low-level signal noise
-      while (x < width) {
-        const noise = (Math.random() - 0.5) * 10;
-        ctx.lineTo(x, (height / 2) + noise);
-        x += 5;
+      // Generate random noise around the center line
+      // Small amplitude (±5 pixels) creates subtle "static" effect
+      while (xPosition < canvasWidth) {
+        const randomNoise = (Math.random() - 0.5) * 10;
+        canvasContext.lineTo(xPosition, (canvasHeight / 2) + randomNoise);
+        xPosition += 5; // Step size determines noise density
       }
 
-      ctx.stroke();
+      canvasContext.stroke();
       return;
     }
 
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = '#00e5ff'; // Neon blue
-    ctx.beginPath();
+    // ACTIVE STATE: Draw real-time waveform from audio data
+    canvasContext.lineWidth = 2;
+    canvasContext.strokeStyle = '#00e5ff'; // Bright neon blue for active recording
+    canvasContext.beginPath();
 
-    const sliceWidth = width * 1.0 / audioData.length;
-    let x = 0;
+    // Calculate how many pixels each audio sample should occupy
+    const pixelsPerSample = canvasWidth * 1.0 / audioData.length;
+    let xPosition = 0;
 
-    for (let i = 0; i < audioData.length; i++) {
-      const v = audioData[i] / 128.0; // Normalize 0-255 to 0-2
-      const y = (v * height) / 2;
+    // Draw the waveform by connecting audio amplitude points
+    for (let sampleIndex = 0; sampleIndex < audioData.length; sampleIndex++) {
+      // Normalize audio data from 0-255 range to 0-2 range
+      // (128 = center, 0 = bottom, 255 = top)
+      const normalizedValue = audioData[sampleIndex] / 128.0;
 
-      if (i === 0) {
-        ctx.moveTo(x, y);
+      // Convert normalized value to canvas Y coordinate
+      // Multiply by half height to fit waveform in canvas
+      const yPosition = (normalizedValue * canvasHeight) / 2;
+
+      if (sampleIndex === 0) {
+        canvasContext.moveTo(xPosition, yPosition);
       } else {
-        ctx.lineTo(x, y);
+        canvasContext.lineTo(xPosition, yPosition);
       }
 
-      x += sliceWidth;
+      xPosition += pixelsPerSample;
     }
 
-    ctx.lineTo(canvas.width, canvas.height / 2);
-    ctx.stroke();
+    // Complete the waveform by connecting to center-right
+    canvasContext.lineTo(canvas.width, canvas.height / 2);
+    canvasContext.stroke();
 
-  }, [audioData, isActive]);
+  }, [audioData, isActive]); // Re-render when audio data or active state changes
 
   return (
     <canvas

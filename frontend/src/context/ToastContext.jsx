@@ -1,35 +1,67 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import Toast from '../components/core/Toast';
 
+/**
+ * Context for managing application-wide toast notifications.
+ * Provides a centralized way to display temporary messages to users.
+ */
 const ToastContext = createContext(null);
 
+/**
+ * Provider component that manages toast notification state and rendering.
+ * Wraps the application to make toast functionality available everywhere.
+ */
 export const ToastProvider = ({ children }) => {
     const [toasts, setToasts] = useState([]);
 
-    const showToast = useCallback((message, type = 'info') => {
-        const id = Date.now();
-        setToasts(prev => [...prev, { id, message, type }]);
+    /**
+     * Displays a new toast notification.
+     * Automatically dismisses after 5 seconds.
+     * 
+     * @param {string} message - Text to display in the notification
+     * @param {string} type - Notification type: 'info', 'success', 'warning', or 'error'
+     */
+    const displayNotification = useCallback((message, type = 'info') => {
+        // Generate unique ID using timestamp (simple but effective for this use case)
+        const notificationId = Date.now();
+        setToasts(prev => [...prev, { id: notificationId, message, type }]);
 
-        // Auto dismiss
+        // Auto-dismiss after 5 seconds to prevent notification buildup
         setTimeout(() => {
-            removeToast(id);
+            dismissNotification(notificationId);
         }, 5000);
     }, []);
 
-    const removeToast = useCallback((id) => {
-        setToasts(prev => prev.filter(t => t.id !== id));
+    /**
+     * Manually dismisses a toast notification.
+     * Called automatically after timeout or when user clicks close button.
+     * 
+     * @param {number} notificationId - Unique ID of the toast to remove
+     */
+    const dismissNotification = useCallback((notificationId) => {
+        setToasts(prev => prev.filter(toast => toast.id !== notificationId));
     }, []);
 
     return (
-        <ToastContext.Provider value={{ showToast }}>
+        <ToastContext.Provider value={{ showToast: displayNotification }}>
             {children}
-            <div style={{ position: 'fixed', bottom: 0, right: 0, padding: '20px', display: 'flex', flexDirection: 'column', gap: '10px', pointerEvents: 'none' }}>
+            {/* Toast container - fixed to bottom-right corner */}
+            <div style={{
+                position: 'fixed',
+                bottom: 0,
+                right: 0,
+                padding: '20px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '10px',
+                pointerEvents: 'none'  // Allow clicks to pass through empty space
+            }}>
                 {toasts.map(toast => (
-                    <div key={toast.id} style={{ pointerEvents: 'auto' }}>
+                    <div key={toast.id} style={{ pointerEvents: 'auto' }}>  {/* Re-enable clicks on actual toasts */}
                         <Toast
                             message={toast.message}
                             type={toast.type}
-                            onClose={() => removeToast(toast.id)}
+                            onClose={() => dismissNotification(toast.id)}
                         />
                     </div>
                 ))}
@@ -38,6 +70,14 @@ export const ToastProvider = ({ children }) => {
     );
 };
 
+/**
+ * Hook to access toast notification functionality.
+ * Must be used within a ToastProvider.
+ * 
+ * @returns {Object} Toast controls
+ * @returns {Function} showToast - Function to display a new notification
+ * @throws {Error} If used outside of ToastProvider
+ */
 export const useToast = () => {
     const context = useContext(ToastContext);
     if (!context) {

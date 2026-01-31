@@ -7,49 +7,80 @@ import Select from '../components/core/Select';
 import Card from '../components/ui/Card';
 import VoiceRecorder from '../components/biometric/VoiceRecorder';
 import { PHONETIC_PARAGRAPHS } from '../data/phonetics';
-import { enrollUser } from '../api/enroll.api';
-import '../styles/components.css'; // Ensure components styles are available
+import { registerUserVoiceprint } from '../api/enroll.api';
+import '../styles/components.css';
 
+/**
+ * User Enrollment Page
+ * Multi-step form for registering new users with voice biometrics.
+ * 
+ * Flow:
+ * Step 0: Collect user details (name, email, role)
+ * Steps 1-3: Record 3 phonetically balanced voice samples
+ * Step 4: Success confirmation
+ */
 const EnrollPage = () => {
   const { showToast } = useToast();
-  const [step, setStep] = useState(0);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [formData, setFormData] = useState({
+
+  // Track current step in the enrollment process (0-4)
+  const [currentStep, setCurrentStep] = useState(0);
+  const [isSubmittingToServer, setIsSubmittingToServer] = useState(false);
+
+  // User enrollment data collected across all steps
+  const [enrollmentData, setEnrollmentData] = useState({
     fullName: '',
     email: '',
     role: 'personnel',
-    recordings: {}
+    recordings: {}  // Will store 3 voice sample blobs keyed by sample_1, sample_2, sample_3
   });
 
-  const handleNext = async () => {
-    if (step === 3) {
-      // Final step: Submit data
-      setIsSubmitting(true);
+  /**
+   * Advances to the next step in the enrollment process.
+   * On the final voice sample step (step 3), submits all data to the server.
+   */
+  const proceedToNextStep = async () => {
+    if (currentStep === 3) {
+      // Final step: Submit all collected data to backend
+      setIsSubmittingToServer(true);
       try {
-        await enrollUser(formData);
+        await registerUserVoiceprint(enrollmentData);
         showToast('Registration Successful. Identity Encoded.', 'success');
-        setStep(prev => prev + 1);
+        setCurrentStep(prev => prev + 1);
       } catch (error) {
         showToast(error.message || 'Registration failed. Please try again.', 'error');
       } finally {
-        setIsSubmitting(false);
+        setIsSubmittingToServer(false);
       }
     } else {
-      setStep(prev => prev + 1);
+      // Move to next step
+      setCurrentStep(prev => prev + 1);
     }
   };
-  const handleBack = () => setStep(prev => prev - 1);
 
-  const handleRecordingComplete = (blob, sampleId) => {
-    setFormData(prev => ({
-      ...prev,
-      recordings: { ...prev.recordings, [sampleId]: blob }
+  /**
+   * Returns to the previous step in the enrollment process.
+   * Allows users to correct information or re-record samples.
+   */
+  const returnToPreviousStep = () => setCurrentStep(prev => prev - 1);
+
+  /**
+   * Saves a recorded voice sample to the enrollment data.
+   * Called when user completes recording for a specific sample.
+   */
+  const saveVoiceSample = (audioBlob, sampleId) => {
+    setEnrollmentData(previousData => ({
+      ...previousData,
+      recordings: { ...previousData.recordings, [sampleId]: audioBlob }
     }));
   };
 
-  const renderStepContent = () => {
-    switch (step) {
+  /**
+   * Renders the appropriate UI for the current enrollment step.
+   */
+  const renderCurrentEnrollmentStep = () => {
+    switch (currentStep) {
       case 0:
+        // Step 1: Collect user profile information
         return (
           <Card title="IDENTITY DETAILS" status="STEP 1/4" delay={0.1}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', width: '100%', maxWidth: '400px', padding: '1rem' }}>
@@ -58,8 +89,8 @@ const EnrollPage = () => {
                 <input
                   type="text"
                   className="cyber-input"
-                  value={formData.fullName}
-                  onChange={(e) => setFormData({ ...formData, fullName: e.target.value })}
+                  value={enrollmentData.fullName}
+                  onChange={(e) => setEnrollmentData({ ...enrollmentData, fullName: e.target.value })}
                   placeholder="ENTER FULL NAME"
                 />
               </div>
@@ -68,16 +99,16 @@ const EnrollPage = () => {
                 <input
                   type="email"
                   className="cyber-input"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  value={enrollmentData.email}
+                  onChange={(e) => setEnrollmentData({ ...enrollmentData, email: e.target.value })}
                   placeholder="user@example.com"
                 />
               </div>
               <div className="cyber-input-group">
                 <label className="cyber-label">ROLE</label>
                 <Select
-                  value={formData.role}
-                  onChange={(value) => setFormData({ ...formData, role: value })}
+                  value={enrollmentData.role}
+                  onChange={(value) => setEnrollmentData({ ...enrollmentData, role: value })}
                   options={[
                     { value: 'personnel', label: 'PERSONNEL' },
                     { value: 'admin', label: 'ADMINISTRATOR' },
@@ -86,9 +117,10 @@ const EnrollPage = () => {
                   placeholder="SELECT ROLE"
                 />
               </div>
+              {/* Only enable proceed button if form is valid */}
               <Button
-                onClick={handleNext}
-                disabled={!formData.fullName || !formData.email || !formData.email.includes('@')}
+                onClick={proceedToNextStep}
+                disabled={!enrollmentData.fullName || !enrollmentData.email || !enrollmentData.email.includes('@')}
                 style={{ marginTop: '1rem' }}
               >
                 PROCEED TO VOICE CALIBRATION
@@ -99,16 +131,19 @@ const EnrollPage = () => {
       case 1:
       case 2:
       case 3:
-        const sampleIndex = step - 1;
-        const sample = PHONETIC_PARAGRAPHS[sampleIndex];
-        const isLast = step === 3;
+        // Steps 2-4: Record voice samples
+        // Each step records one of three phonetically balanced paragraphs
+        const sampleIndex = currentStep - 1;
+        const currentSample = PHONETIC_PARAGRAPHS[sampleIndex];
+        const isLastSample = currentStep === 3;
 
         return (
-          <Card title={`VOICE SAMPLE ${step}/3`} status="RECORDING" delay={0.1}>
+          <Card title={`VOICE SAMPLE ${currentStep}/3`} status="RECORDING" delay={0.1}>
             <div style={{ padding: '1rem', maxWidth: '500px', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
               <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: '1.6' }}>
                 Please read the following text clearly:
               </p>
+              {/* Display the phonetic paragraph for user to read */}
               <div style={{
                 padding: '1rem',
                 background: 'rgba(0, 243, 255, 0.05)',
@@ -118,19 +153,22 @@ const EnrollPage = () => {
                 fontFamily: 'var(--font-header)',
                 letterSpacing: '0.5px'
               }}>
-                "{sample.text}"
+                "{currentSample.text}"
               </div>
 
+              {/* Voice recorder component handles recording UI */}
               <VoiceRecorder
-                label={sample.label}
-                onRecordingComplete={(blob) => handleRecordingComplete(blob, sample.id)}
+                label={currentSample.label}
+                onRecordingComplete={(blob) => saveVoiceSample(blob, currentSample.id)}
               />
 
+              {/* Navigation buttons */}
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '1rem' }}>
-                <Button variant="secondary" onClick={handleBack} disabled={isSubmitting}>BACK</Button>
-                {formData.recordings[sample.id] && (
-                  <Button onClick={handleNext} disabled={isSubmitting}>
-                    {isSubmitting ? "PROCESSING..." : (isLast ? "COMPLETE REGISTRATION" : "NEXT SAMPLE")}
+                <Button variant="secondary" onClick={returnToPreviousStep} disabled={isSubmittingToServer}>BACK</Button>
+                {/* Only show next button if current sample has been recorded */}
+                {enrollmentData.recordings[currentSample.id] && (
+                  <Button onClick={proceedToNextStep} disabled={isSubmittingToServer}>
+                    {isSubmittingToServer ? "PROCESSING..." : (isLastSample ? "COMPLETE REGISTRATION" : "NEXT SAMPLE")}
                   </Button>
                 )}
               </div>
@@ -138,13 +176,14 @@ const EnrollPage = () => {
           </Card>
         );
       case 4:
+        // Step 5: Success confirmation
         return (
           <Card title="REGISTRATION COMPLETE" status="SUCCESS" delay={0.1}>
             <div style={{ padding: '2rem', textAlign: 'center', maxWidth: '400px' }}>
               <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🎉</div>
               <h3 style={{ color: 'var(--primary-color)', marginBottom: '1rem' }}>IDENTITY REGISTERED</h3>
               <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem' }}>
-                Voice profile has been successfully created for <strong style={{ color: 'white' }}>{formData.fullName}</strong>.
+                Voice profile has been successfully created for <strong style={{ color: 'white' }}>{enrollmentData.fullName}</strong>.
               </p>
               <Link to="/">
                 <Button>RETURN TO GATEWAY</Button>
@@ -159,13 +198,18 @@ const EnrollPage = () => {
 
   return (
     <div className="page-container" style={{ justifyContent: 'center', alignItems: 'center' }}>
+      {/* Page header with logo and title */}
       <div style={{ marginBottom: '2rem', textAlign: 'center' }}>
         <Logo size="medium" style={{ justifyContent: 'center' }} />
         <h2 style={{ fontFamily: 'var(--font-header)', color: 'var(--text-secondary)', letterSpacing: '4px', fontSize: '1rem', marginTop: '1rem' }}>
           NEW USER ENROLLMENT
         </h2>
       </div>
-      {renderStepContent()}
+
+      {/* Render current step content (form, voice recorder, or success message) */}
+      {renderCurrentEnrollmentStep()}
+
+      {/* Footer with version info */}
       <div style={{ marginTop: '2rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
         SECURE_CORE // V2.0.4
       </div>
