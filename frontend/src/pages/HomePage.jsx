@@ -4,6 +4,7 @@ import Button from '../components/core/Button';
 import Logo from '../components/core/Logo';
 import Card from '../components/ui/Card';
 import SystemStatus from '../components/ui/SystemStatus';
+import LoreTerminal from '../components/ui/LoreTerminal';
 
 const HomePage = () => {
   return (
@@ -63,19 +64,7 @@ const HomePage = () => {
         </Card>
       </div>
 
-      <div className="lore-section" style={{ marginTop: '4rem', maxWidth: '800px', textAlign: 'center', borderTop: '1px solid rgba(0, 243, 255, 0.2)', paddingTop: '2rem' }}>
-        <h4 style={{ color: 'var(--text-secondary)', letterSpacing: '2px', marginBottom: '1rem' }}>SYSTEM BACKGROUND</h4>
-        <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: '1.6' }}>
-          Established in 2077, the <span style={{ color: 'var(--neon-blue)' }}>Bio.VAN Protocol</span> was developed to combat the rising tide of synthetic identity theft. 
-          Operating on a decentralized neural mesh, our nodes process millions of voiceprints daily, ensuring that in a world of AI mimics, 
-          <span style={{ color: 'var(--neon-green)' }}> humanity remains verifiable</span>.
-        </p>
-        <div style={{ display: 'flex', justifyContent: 'center', gap: '2rem', marginTop: '2rem', fontSize: '0.8rem', color: 'var(--text-secondary)' }}>
-          <div>NODE: <span style={{ color: 'var(--neon-blue)' }}>TOKYO-03</span></div>
-          <div>LATENCY: <span style={{ color: 'var(--neon-green)' }}>12ms</span></div>
-          <div>ENCRYPTION: <span style={{ color: 'var(--neon-purple)' }}>QUANTUM-256</span></div>
-        </div>
-      </div>
+      <LoreTerminal />
     </div>
   );
 };
