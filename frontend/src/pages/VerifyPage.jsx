@@ -14,6 +14,8 @@ import Loader from '../components/core/Loader';
 import Button from '../components/core/Button';
 import Logo from '../components/core/Logo';
 import Terminal from '../components/ui/Terminal';
+import SystemStatus from '../components/ui/SystemStatus';
+import '../styles/components.css';
 
 /**
  * Voice Verification Page
@@ -50,23 +52,23 @@ const VerifyPage = () => {
    * Toggles microphone recording on/off.
    * When stopping, automatically triggers voice authentication.
    */
-  const toggleMicrophoneRecording = async () => {
+  const toggleAudioCapture = async () => {
     if (isRecording) {
       // Stop recording and process the audio
-      appendTerminalLog('STOPPING STREAM...');
+      appendTerminalLog('TERMINATING DATA STREAM...');
       setVerificationStatus('processing');
       const audioBlob = await stopRecording();
 
       if (audioBlob) {
-        appendTerminalLog(`AUDIO BUFFER CAPTURED [${audioBlob.size} BYTES]`);
-        processVoiceAuthentication(audioBlob);
+        appendTerminalLog(`BUFFER LOCKED [${audioBlob.size} BYTES]`);
+        executeAuthenticationProtocol(audioBlob);
       } else {
         setVerificationStatus('idle');
-        appendTerminalLog('ERROR: EMPTY AUDIO BUFFER');
+        appendTerminalLog('ERROR: NULL SIGNAL RECEIVED');
       }
     } else {
       // Start recording
-      appendTerminalLog('OPENING SECURE AUDIO CHANNEL...');
+      appendTerminalLog('INITIALIZING SECURE CHANNEL...');
       setVerificationStatus('recording');
       startRecording();
     }
@@ -78,9 +80,9 @@ const VerifyPage = () => {
    * Sends voice sample to backend for authentication.
    * Handles three possible outcomes: verified, rejected, or spoof detected.
    */
-  const processVoiceAuthentication = async (audioBlob) => {
-    appendTerminalLog('INITIATING SECURE HANDSHAKE...');
-    appendTerminalLog('UPLOADING TO CORE...');
+  const executeAuthenticationProtocol = async (audioBlob) => {
+    appendTerminalLog('HANDSHAKE INITIATED...');
+    appendTerminalLog('TRANSMITTING TO CORE...');
 
     try {
       const authenticationResult = await authenticateVoiceSample(audioBlob);
@@ -88,25 +90,24 @@ const VerifyPage = () => {
 
       if (authenticationResult.spoof) {
         // Spoofing attack detected (replay attack, synthetic voice, etc.)
-        appendTerminalLog('!!! SECURITY ALERT: SPOOF DETECTED !!!');
+        appendTerminalLog('!!! SECURITY VIOLATION: SYNTHETIC SIGNATURE !!!');
         setVerificationStatus('spoof');
-        showToast('Potential spoofing attack detected. Access blocked.', 'error');
+        showToast('Artificial signature detected. Countermeasures engaged.', 'error');
       } else if (authenticationResult.verified) {
         // Voice matches stored voiceprint
-        appendTerminalLog(`IDENTITY CONFIRMED. MATCH SCORE: ${authenticationResult.similarity_score.toFixed(4)}`);
+        appendTerminalLog(`IDENTITY VERIFIED. CONFIDENCE: ${(authenticationResult.similarity_score * 100).toFixed(2)}%`);
         setVerificationStatus('verified');
-        showToast(`Identity Verified. Welcome, User #${authenticationResult.user_id || 'UNKNOWN'}.`, 'success');
+        showToast(`Access Granted. Welcome, Operator #${authenticationResult.user_id || 'UNKNOWN'}.`, 'success');
       } else {
         // Voice doesn't match (similarity score too low)
-        appendTerminalLog(`ACCESS DENIED. SCORE: ${authenticationResult.similarity_score.toFixed(4)}`);
+        appendTerminalLog(`ACCESS DENIED. CONFIDENCE: ${(authenticationResult.similarity_score * 100).toFixed(2)}%`);
         setVerificationStatus('rejected');
-        showToast('Verification failed. Identity mismatch.', 'warning');
+        showToast('Identity mismatch. Access denied.', 'error');
       }
     } catch (error) {
-      appendTerminalLog('FATAL: CONNECTION REFUSED');
-      console.error(error);
-      setVerificationStatus('idle');
-      showToast('Connection to Secure Core refused. Server may be offline.', 'error');
+      appendTerminalLog(`FATAL ERROR: ${error.message}`);
+      setVerificationStatus('rejected');
+      showToast('System malfunction. Connection reset.', 'error');
     }
   };
 
@@ -114,53 +115,57 @@ const VerifyPage = () => {
    * Resets the verification system to initial state.
    * Allows user to try authentication again.
    */
-  const resetVerificationState = () => {
-    appendTerminalLog('RESETTING SYSTEM STATE...');
+  const resetSystemState = () => {
+    appendTerminalLog('PURGING CACHE...');
     setVerificationStatus('idle');
     setSimilarityScore(0);
-    setTimeout(() => appendTerminalLog('READY.'), 500);
+    setTimeout(() => appendTerminalLog('SYSTEM RE-ARMED. STANDBY.'), 500);
   };
 
   return (
-    <div className="page-container verify-layout">
-      {/* LEFT PANEL: Waveform visualization and controls */}
-      <div className="main-panel">
-        <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--text-secondary)', paddingBottom: '1rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-            <Logo size="small" />
-            <span style={{ fontFamily: 'var(--font-header)', color: 'var(--text-secondary)' }}>&gt; EXEC: VERIFY_IDENTITY</span>
+    <div className="page-container">
+      <SystemStatus />
+      
+      <div className="verify-layout">
+        {/* LEFT PANEL: Waveform visualization and controls */}
+        <div className="main-panel">
+          <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--text-secondary)', paddingBottom: '1rem' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+              <Logo size="small" />
+              <span style={{ fontFamily: 'var(--font-header)', color: 'var(--text-secondary)' }}>&gt; PROTOCOL: AUTH_VERIFY</span>
+            </div>
+            <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--neon-blue)' }}>SECURE_CHANNEL_01</span>
+          </header>
+
+          {/* Visualization area with overlapping status indicators */}
+          <div className="visualization-area" style={{ flex: 1, minHeight: '400px', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', position: 'relative', border: 'var(--glass-border)', background: 'var(--glass-bg)', borderRadius: '12px' }}>
+            <PulseRing isActive={verificationStatus === 'recording'} />
+            <Loader active={verificationStatus === 'processing'} />
+            <Waveform audioData={audioData} isActive={verificationStatus === 'recording'} />
+            <VerificationStatus status={verificationStatus} />
           </div>
-          <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--neon-blue)' }}>ID: #1</span>
-        </header>
 
-        {/* Visualization area with overlapping status indicators */}
-        <div className="visualization-area" style={{ flex: 1, minHeight: '400px', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', position: 'relative', border: 'var(--glass-border)', background: 'var(--glass-bg)', borderRadius: '12px' }}>
-          <PulseRing isActive={verificationStatus === 'recording'} />
-          <Loader active={verificationStatus === 'processing'} />
-          <Waveform audioData={audioData} isActive={verificationStatus === 'recording'} />
-          <VerificationStatus status={verificationStatus} />
+          {/* Control buttons area */}
+          <div className="controls-area" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
+            <StatusMessage status={verificationStatus} similarity={similarityScore} />
+
+            {/* Show reset button after verification completes, otherwise show mic control */}
+            {verificationStatus === 'verified' || verificationStatus === 'rejected' || verificationStatus === 'spoof' ? (
+              <Button onClick={resetSystemState}>RESET SYSTEM</Button>
+            ) : (
+              <MicControl
+                isRecording={isRecording}
+                onToggle={toggleAudioCapture}
+                disabled={verificationStatus === 'processing'}
+              />
+            )}
+          </div>
         </div>
 
-        {/* Control buttons area */}
-        <div className="controls-area" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
-          <StatusMessage status={verificationStatus} similarity={similarityScore} />
-
-          {/* Show reset button after verification completes, otherwise show mic control */}
-          {verificationStatus === 'verified' || verificationStatus === 'rejected' || verificationStatus === 'spoof' ? (
-            <Button onClick={resetVerificationState}>RESET TERMINAL</Button>
-          ) : (
-            <MicControl
-              isRecording={isRecording}
-              onToggle={toggleMicrophoneRecording}
-              disabled={verificationStatus === 'processing'}
-            />
-          )}
+        {/* RIGHT PANEL: Terminal logs for debugging/transparency */}
+        <div className="side-panel">
+          <Terminal logs={terminalLogs} />
         </div>
-      </div>
-
-      {/* RIGHT PANEL: Terminal logs for debugging/transparency */}
-      <div className="side-panel">
-        <Terminal logs={terminalLogs} />
       </div>
     </div>
   );

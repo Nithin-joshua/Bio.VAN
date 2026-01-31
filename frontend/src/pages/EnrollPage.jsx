@@ -5,6 +5,7 @@ import Button from '../components/core/Button';
 import Logo from '../components/core/Logo';
 import Select from '../components/core/Select';
 import Card from '../components/ui/Card';
+import SystemStatus from '../components/ui/SystemStatus';
 import VoiceRecorder from '../components/biometric/VoiceRecorder';
 import { PHONETIC_PARAGRAPHS } from '../data/phonetics';
 import { registerUserVoiceprint } from '../api/enroll.api';
@@ -77,44 +78,44 @@ const EnrollPage = () => {
   /**
    * Renders the appropriate UI for the current enrollment step.
    */
-  const renderCurrentEnrollmentStep = () => {
+  const renderProtocolInterface = () => {
     switch (currentStep) {
       case 0:
         // Step 1: Collect user profile information
         return (
-          <Card title="IDENTITY DETAILS" status="STEP 1/4" delay={0.1}>
+          <Card title="IDENTITY PROTOCOL" status="PHASE 1/4" delay={0.1}>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', width: '100%', maxWidth: '400px', padding: '1rem' }}>
               <div className="cyber-input-group">
-                <label className="cyber-label">FULL NAME</label>
+                <label className="cyber-label">DESIGNATION (FULL NAME)</label>
                 <input
                   type="text"
                   className="cyber-input"
                   value={enrollmentData.fullName}
                   onChange={(e) => setEnrollmentData({ ...enrollmentData, fullName: e.target.value })}
-                  placeholder="ENTER FULL NAME"
+                  placeholder="ENTER DESIGNATION"
                 />
               </div>
               <div className="cyber-input-group">
-                <label className="cyber-label">EMAIL ADDRESS</label>
+                <label className="cyber-label">COMMS CHANNEL (EMAIL)</label>
                 <input
                   type="email"
                   className="cyber-input"
                   value={enrollmentData.email}
                   onChange={(e) => setEnrollmentData({ ...enrollmentData, email: e.target.value })}
-                  placeholder="user@example.com"
+                  placeholder="user@network.com"
                 />
               </div>
               <div className="cyber-input-group">
-                <label className="cyber-label">ROLE</label>
+                <label className="cyber-label">CLEARANCE LEVEL</label>
                 <Select
                   value={enrollmentData.role}
                   onChange={(value) => setEnrollmentData({ ...enrollmentData, role: value })}
                   options={[
-                    { value: 'personnel', label: 'PERSONNEL' },
-                    { value: 'admin', label: 'ADMINISTRATOR' },
-                    { value: 'researcher', label: 'RESEARCHER' }
+                    { value: 'personnel', label: 'STANDARD PERSONNEL' },
+                    { value: 'admin', label: 'SYSTEM ADMINISTRATOR' },
+                    { value: 'researcher', label: 'LAB RESEARCHER' }
                   ]}
-                  placeholder="SELECT ROLE"
+                  placeholder="SELECT CLEARANCE"
                 />
               </div>
               {/* Only enable proceed button if form is valid */}
@@ -123,7 +124,7 @@ const EnrollPage = () => {
                 disabled={!enrollmentData.fullName || !enrollmentData.email || !enrollmentData.email.includes('@')}
                 style={{ marginTop: '1rem' }}
               >
-                PROCEED TO VOICE CALIBRATION
+                INITIATE VOICE CALIBRATION
               </Button>
             </div>
           </Card>
@@ -141,7 +142,7 @@ const EnrollPage = () => {
           <Card title={`VOICE SAMPLE ${currentStep}/3`} status="RECORDING" delay={0.1}>
             <div style={{ padding: '1rem', maxWidth: '500px', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
               <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: '1.6' }}>
-                Please read the following text clearly:
+                Verbalize the following data packet clearly:
               </p>
               {/* Display the phonetic paragraph for user to read */}
               <div style={{
@@ -164,11 +165,11 @@ const EnrollPage = () => {
 
               {/* Navigation buttons */}
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '1rem' }}>
-                <Button variant="secondary" onClick={returnToPreviousStep} disabled={isSubmittingToServer}>BACK</Button>
+                <Button variant="secondary" onClick={returnToPreviousStep} disabled={isSubmittingToServer}>REGRESS</Button>
                 {/* Only show next button if current sample has been recorded */}
                 {enrollmentData.recordings[currentSample.id] && (
                   <Button onClick={proceedToNextStep} disabled={isSubmittingToServer}>
-                    {isSubmittingToServer ? "PROCESSING..." : (isLastSample ? "COMPLETE REGISTRATION" : "NEXT SAMPLE")}
+                    {isSubmittingToServer ? "UPLOADING BIOMETRICS..." : (isLastSample ? "FINALIZE REGISTRATION" : "NEXT SAMPLE")}
                   </Button>
                 )}
               </div>
@@ -181,12 +182,12 @@ const EnrollPage = () => {
           <Card title="REGISTRATION COMPLETE" status="SUCCESS" delay={0.1}>
             <div style={{ padding: '2rem', textAlign: 'center', maxWidth: '400px' }}>
               <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🎉</div>
-              <h3 style={{ color: 'var(--primary-color)', marginBottom: '1rem' }}>IDENTITY REGISTERED</h3>
+              <h3 style={{ color: 'var(--primary-color)', marginBottom: '1rem' }}>IDENTITY ENCODED</h3>
               <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem' }}>
-                Voice profile has been successfully created for <strong style={{ color: 'white' }}>{enrollmentData.fullName}</strong>.
+                Voice profile has been successfully integrated for <strong style={{ color: 'white' }}>{enrollmentData.fullName}</strong>.
               </p>
               <Link to="/">
-                <Button>RETURN TO GATEWAY</Button>
+                <Button>RETURN TO MAIN GATEWAY</Button>
               </Link>
             </div>
           </Card>
@@ -198,16 +199,17 @@ const EnrollPage = () => {
 
   return (
     <div className="page-container" style={{ justifyContent: 'center', alignItems: 'center' }}>
+      <SystemStatus />
       {/* Page header with logo and title */}
       <div style={{ marginBottom: '2rem', textAlign: 'center' }}>
         <Logo size="medium" style={{ justifyContent: 'center' }} />
         <h2 style={{ fontFamily: 'var(--font-header)', color: 'var(--text-secondary)', letterSpacing: '4px', fontSize: '1rem', marginTop: '1rem' }}>
-          NEW USER ENROLLMENT
+          NEW USER ENROLLMENT PROTOCOL
         </h2>
       </div>
 
       {/* Render current step content (form, voice recorder, or success message) */}
-      {renderCurrentEnrollmentStep()}
+      {renderProtocolInterface()}
 
       {/* Footer with version info */}
       <div style={{ marginTop: '2rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem' }}>

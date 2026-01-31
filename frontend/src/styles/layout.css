@@ -10,7 +10,7 @@
   pointer-events: auto;
 }
 
-/* CRT SCANLINE OVERLAY */
+/* CRT SCANLINE OVERLAY - Enhanced */
 #root::after {
   content: " ";
   display: block;
@@ -20,15 +20,15 @@
   bottom: 0;
   right: 0;
   background:
-    linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.1) 50%),
-    radial-gradient(circle at center, transparent 40%, rgba(0, 0, 0, 0.6) 100%);
+    linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.15) 50%),
+    radial-gradient(circle at center, transparent 60%, rgba(0, 0, 0, 0.7) 100%);
   background-size: 100% 3px, 100% 100%;
   pointer-events: none;
   z-index: 9999;
-  opacity: 0.6;
+  opacity: 0.7;
 }
 
-/* MOVING SCANLINE */
+/* MOVING SCANLINE - Enhanced */
 #root::before {
   content: " ";
   display: block;
@@ -37,12 +37,13 @@
   left: 0;
   bottom: 0;
   right: 0;
-  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 255, 255, 0.02) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 243, 255, 0.03) 50%), 
+              linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
   z-index: 9998;
   background-size: 100% 2px, 3px 100%;
   pointer-events: none;
-  animation: scanline-move 10s linear infinite;
-  opacity: 0.3;
+  animation: scanline-move 8s linear infinite;
+  opacity: 0.4;
 }
 
 @keyframes scanline-move {
@@ -72,11 +73,22 @@
   overflow-x: hidden;
   background-color: var(--bg-dark);
 
-  /* GRID PATTERN */
+  /* MOVING GRID PATTERN - Enhanced 3D feel */
   background-image:
-    linear-gradient(0deg, rgba(0, 243, 255, 0.03) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0, 243, 255, 0.03) 1px, transparent 1px);
-  background-size: 40px 40px;
+    linear-gradient(0deg, rgba(0, 243, 255, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 243, 255, 0.05) 1px, transparent 1px);
+  background-size: 50px 50px;
+  animation: grid-move 20s linear infinite;
+  perspective: 1000px;
+}
+
+@keyframes grid-move {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: 0 50px;
+  }
 }
 
 .page-container {
@@ -90,6 +102,31 @@
   padding: 2rem;
   z-index: 10;
   position: relative;
+}
+
+/* RESPONSIVE DESIGN ENHANCEMENTS */
+@media (max-width: 768px) {
+  .page-container {
+    padding: 1rem;
+    width: 100%;
+  }
+
+  /* Adjust terminal text size for mobile */
+  .terminal-window {
+    font-size: 0.8rem;
+  }
+  
+  /* Stack verify layout on mobile */
+  .verify-layout {
+    flex-direction: column;
+  }
+
+  .main-panel, .side-panel {
+    width: 100% !important;
+  }
+  
+  h1 { font-size: 1.8rem; }
+  h2 { font-size: 1.4rem; }
 }
 
 /* HOME PAGE LAYOUT */
@@ -125,6 +162,8 @@
 
 /* VERIFY PAGE LAYOUT */
 .verify-layout {
+  display: flex;
+  width: 100%;
   flex-direction: row;
   align-items: flex-start;
   gap: 2rem;
@@ -160,6 +199,68 @@
 }
 
 /* --- MOBILE RESPONSIVENESS --- */
+@media screen and (max-width: 768px) {
+  .hero-header {
+    transform: none;
+    flex-direction: column;
+  }
+  
+  .hologram-wrapper {
+    width: 120px;
+    height: 120px;
+  }
+}
+
+/* --- ANIMATION UTILITIES --- */
+
+/* TEXT GLITCH EFFECT */
+.text-glitch {
+  animation: glitch-skew 3s infinite;
+  display: inline-block;
+}
+
+@keyframes glitch-skew {
+  0%, 100% { transform: skew(0deg); }
+  20% { transform: skew(-10deg); filter: blur(1px); color: var(--neon-red); }
+  21% { transform: skew(10deg); filter: none; color: inherit; }
+  22% { transform: skew(0deg); }
+  80% { transform: skew(0deg); }
+  85% { transform: skew(5deg); opacity: 0.8; }
+  86% { transform: skew(0deg); opacity: 1; }
+}
+
+/* TYPING EFFECT CONTAINER */
+.typing-container {
+  display: inline-block;
+  overflow: hidden;
+  white-space: nowrap;
+  border-right: 2px solid var(--neon-green);
+  animation: blink-caret 0.75s step-end infinite;
+  max-width: fit-content;
+}
+
+@keyframes blink-caret {
+  from, to { border-color: transparent }
+  50% { border-color: var(--neon-green); }
+}
+
+/* FLOATING DATA PARTICLES (can be added dynamically) */
+.data-particle {
+  position: absolute;
+  width: 2px;
+  height: 2px;
+  background: var(--neon-blue);
+  box-shadow: 0 0 5px var(--neon-blue);
+  pointer-events: none;
+  animation: float-up 10s linear infinite;
+  opacity: 0.5;
+}
+
+@keyframes float-up {
+  0% { transform: translateY(100vh) scale(0); opacity: 0; }
+  50% { opacity: 0.8; }
+  100% { transform: translateY(-100px) scale(1); opacity: 0; }
+}
 @media screen and (max-width: 768px) {
   .page-container {
     padding: 1rem;
