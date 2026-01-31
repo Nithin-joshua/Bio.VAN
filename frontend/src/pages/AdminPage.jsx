@@ -3,66 +3,84 @@ import { Link, useNavigate } from 'react-router-dom';
 import Button from '../components/core/Button';
 import Logo from '../components/core/Logo';
 import Card from '../components/ui/Card';
-import { getAllUsers } from '../api/admin.api';
+import { fetchRegisteredUsers } from '../api/admin.api';
 
+/**
+ * Administrative Dashboard Page
+ * Displays a secure registry of all users in the system.
+ * Requires a valid JWT token in localStorage to access.
+ */
 const AdminPage = () => {
-    const [users, setUsers] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(null);
+    // Registry state management
+    const [personnelRegistry, setPersonnelRegistry] = useState([]);
+    const [isLoadingRegistry, setIsLoadingRegistry] = useState(true);
+    const [accessError, setAccessError] = useState(null);
+
     const navigate = useNavigate();
 
+    // Verify authentication and fetch data on mount
     useEffect(() => {
-        const token = localStorage.getItem('admin_token');
-        if (!token) {
+        const adminToken = localStorage.getItem('admin_token');
+
+        // Redirect to login if no token is present
+        if (!adminToken) {
             navigate('/admin');
             return;
         }
 
-        const fetchUsers = async () => {
+        const populateRegistry = async () => {
             try {
-                const data = await getAllUsers(token);
-                setUsers(data);
+                // Fetch secure user list from backend
+                const registryData = await fetchRegisteredUsers(adminToken);
+                setPersonnelRegistry(registryData);
             } catch (err) {
-                setError('Failed to load user registry. Token may be invalid.');
-                if (err.message.includes('401') || err.message.includes('403')) {
+                setAccessError('Failed to load user registry. Session may represent a security risk or be expired.');
+                // Redirect on authentication failures
+                if (err.message && (err.message.includes('401') || err.message.includes('403'))) {
                     navigate('/admin');
                 }
             } finally {
-                setLoading(false);
+                setIsLoadingRegistry(false);
             }
         };
 
-        fetchUsers();
+        populateRegistry();
     }, [navigate]);
 
-    const handleLogout = () => {
+    /**
+     * Clears local session and redirects to login
+     */
+    const handleAdminLogout = () => {
         localStorage.removeItem('admin_token');
         navigate('/admin');
     };
 
     return (
         <div className="page-container">
+            {/* Dashboard Header */}
             <div style={{ marginBottom: '2rem', textAlign: 'center', position: 'relative', width: '100%', maxWidth: '800px' }}>
                 <Logo size="medium" style={{ justifyContent: 'center' }} />
                 <h2 style={{ fontFamily: 'var(--font-header)', color: 'var(--text-secondary)', letterSpacing: '4px', fontSize: '1rem', marginTop: '1rem' }}>
                     ADMINISTRATIVE DASHBOARD
                 </h2>
+                {/* Logout Control */}
                 <div style={{ position: 'absolute', right: 0, top: 0 }}>
-                    <Button variant="secondary" onClick={handleLogout} style={{ fontSize: '0.8rem', padding: '0.5rem 1rem' }}>
+                    <Button variant="secondary" onClick={handleAdminLogout} style={{ fontSize: '0.8rem', padding: '0.5rem 1rem' }}>
                         LOGOUT
                     </Button>
                 </div>
             </div>
 
-            <Card title="REGISTERED PERSONNEL" status={loading ? "SYNCING..." : "SECURE"} delay={0.1}>
+            {/* Main Registry Table Card */}
+            <Card title="REGISTERED PERSONNEL" status={isLoadingRegistry ? "SYNCING..." : "SECURE"} delay={0.1}>
                 <div style={{ padding: '1rem', width: '100%', minWidth: '600px' }}>
-                    {error && (
+                    {accessError && (
                         <div style={{ padding: '1rem', background: 'rgba(255, 0, 0, 0.1)', border: '1px solid red', color: 'red', marginBottom: '1rem' }}>
-                            {error}
+                            {accessError}
                         </div>
                     )}
 
-                    {!loading && !error && (
+                    {!isLoadingRegistry && !accessError && (
                         <table style={{ width: '100%', borderCollapse: 'collapse', color: 'var(--text-primary)', fontFamily: 'monospace' }}>
                             <thead>
                                 <tr style={{ borderBottom: '1px solid var(--primary-color)', textAlign: 'left' }}>
@@ -74,7 +92,7 @@ const AdminPage = () => {
                                 </tr>
                             </thead>
                             <tbody>
-                                {users.map((user) => (
+                                {personnelRegistry.map((user) => (
                                     <tr key={user.id} style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.1)' }}>
                                         <td style={{ padding: '1rem' }}>{String(user.id).padStart(4, '0')}</td>
                                         <td style={{ padding: '1rem', fontWeight: 'bold' }}>{user.full_name}</td>
@@ -101,7 +119,7 @@ const AdminPage = () => {
                         </table>
                     )}
 
-                    {!loading && users.length === 0 && (
+                    {!isLoadingRegistry && personnelRegistry.length === 0 && (
                         <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
                             NO RECORDS FOUND
                         </div>
