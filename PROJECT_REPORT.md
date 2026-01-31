@@ -55,9 +55,20 @@ We moved away from "boring" corporate designs. The UI simulates a futuristic ter
 
 ### 3.2 Key Components
 
+#### `LoreTerminal.jsx` (New)
+*   **Why**: To enhance the immersive "Cyberpunk" narrative and replace static text with dynamic storytelling.
+*   **How**: 
+    *   Simulates a secure system boot sequence with a typewriter effect.
+    *   Displays real-time "dummy" metrics (Latency, Encryption Status, Node Connection) that update dynamically.
+    *   Features blinking cursors and neon text styling to match the system's aesthetic.
+
 #### `VoiceRecorder.jsx`
 *   **Why**: We needed more than just a "Record" button. Users need visual feedback to know the system is listening.
 *   **How**: Uses the Web Audio API to analyze audio frequency in real-time and draws a waveform on an HTML5 Canvas.
+
+#### `VerifyPage.jsx`
+*   **Responsiveness**: Recently upgraded to support tablet and mobile layouts.
+*   **Stacked Layout**: Automatically switches from a split-pane view to a vertical stack on smaller screens (`< 1024px`), ensuring the terminal log and waveform visualization remain usable on all devices.
 
 #### `EnrollPage.jsx` (The Wizard)
 *   **Why**: Enrollment is complex (Metadata + 3 Voice Files). A single long form is overwhelming.
@@ -140,6 +151,7 @@ Every audio sample uploaded to the system (Enrollment OR Verification) undergoes
 
 ### 6.2 Running the System
 1.  **Start DBs**: `docker-compose up -d`
+    *   *Includes Milvus, PostgreSQL, and Attu (Milvus GUI).*
 2.  **Start Backend**: 
     ```bash
     cd backend
@@ -151,6 +163,9 @@ Every audio sample uploaded to the system (Enrollment OR Verification) undergoes
     cd frontend
     npm run dev
     ```
+4.  **Access Database GUI**:
+    *   Open `http://localhost:8001` to access **Attu**.
+    *   Connect to `milvus:19530` to inspect vector embeddings visually.
 
 ### 6.3 Usage
 1.  **Initial Setup**: Create an admin user via CLI:

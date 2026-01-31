@@ -105,29 +105,7 @@
 }
 
 /* RESPONSIVE DESIGN ENHANCEMENTS */
-@media (max-width: 768px) {
-  .page-container {
-    padding: 1rem;
-    width: 100%;
-  }
-
-  /* Adjust terminal text size for mobile */
-  .terminal-window {
-    font-size: 0.8rem;
-  }
-  
-  /* Stack verify layout on mobile */
-  .verify-layout {
-    flex-direction: column;
-  }
-
-  .main-panel, .side-panel {
-    width: 100% !important;
-  }
-  
-  h1 { font-size: 1.8rem; }
-  h2 { font-size: 1.4rem; }
-}
+/* MOVED TO END OF FILE TO ENSURE CASCADING OVERRIDES */
 
 /* HOME PAGE LAYOUT */
 .home-page {
@@ -196,6 +174,45 @@
 .hologram-wrapper {
   width: 180px;
   height: 180px;
+}
+
+/* --- RESPONSIVE DESIGN --- */
+/* Placed at the end to override base styles */
+
+/* Tablet and Mobile - Stack Layout */
+@media (max-width: 1024px) {
+  .verify-layout {
+    flex-direction: column;
+    gap: 3rem;
+  }
+
+  .main-panel, .side-panel {
+    width: 100% !important;
+  }
+
+  .side-panel {
+    height: 500px; /* Slightly shorter for stacked view */
+  }
+
+  .page-container {
+    padding: 1.5rem;
+    width: 100%;
+  }
+}
+
+/* Mobile Specific Adjustments */
+@media (max-width: 768px) {
+  .page-container {
+    padding: 1rem;
+  }
+
+  /* Adjust terminal text size for mobile */
+  .terminal-window {
+    font-size: 0.8rem;
+  }
+  
+  h1 { font-size: 1.8rem; }
+  h2 { font-size: 1.4rem; }
 }
 
 /* --- MOBILE RESPONSIVENESS --- */

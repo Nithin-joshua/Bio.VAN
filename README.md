@@ -1,121 +1,80 @@
-# Secure Biometric Voice Authentication – 
-Sprint 1 - Day -01
+# Bio.VAN - Secure Biometric Voice Authentication Protocol
 
-## Overview
-This module performs speaker verification using:
-- ECAPA-TDNN (SpeechBrain)
-- Cosine similarity scoring
-- Strict input validation
+Bio.VAN is a next-generation decentralized voice authentication system leveraging spectral analysis and neural mesh networks to map unique vocal identifiers. Designed with a Cyberpunk aesthetic, it provides secure, privacy-focused identity verification.
 
-Raw audio is never stored.
+## 🚀 Key Features
 
-## Requirements
-- Python 3.9+
-- 16kHz mono WAV files
-- Minimum 3 seconds per sample
+*   **Voice Enrollment Wizard**: Multi-step process to capture high-quality voice samples.
+*   **Real-time Verification**: Instant voice matching using ECAPA-TDNN embeddings.
+*   **Immersive UI**: "Cyberpunk" interface with glassmorphism, neon effects, and a **Lore Terminal** that simulates system boot sequences and live metrics.
+*   **Vector Database**: Uses **Milvus** for high-speed similarity search of voice embeddings.
+*   **Admin Dashboard**: Monitor system health, user registry, and network traffic.
+*   **Responsive Design**: Fully optimized for Desktop, Tablet, and Mobile.
 
-## Setup
+## 🛠️ Tech Stack
+
+*   **Frontend**: React (Vite), CSS3 (Variables, Animations), Canvas API (Waveforms).
+*   **Backend**: Python (FastAPI), SpeechBrain (Audio Processing).
+*   **Database**: 
+    *   **PostgreSQL**: Metadata storage.
+    *   **Milvus**: Vector embedding storage.
+*   **DevOps**: Docker, Docker Compose.
+*   **Tools**: Attu (Milvus GUI).
+
+## ⚡ Quick Start
+
+### Prerequisites
+*   Docker & Docker Compose
+*   Node.js (v18+)
+*   Python (3.9+)
+
+### 1. Start Infrastructure
+Launch the database services (Milvus, PostgreSQL, Attu):
 ```bash
+docker-compose up -d
+```
+
+### 2. Start Backend
+Navigate to the backend directory and run the server:
+```bash
+cd backend
+# Activate virtual environment
+..\myenv\Scripts\activate  # Windows
+# source ../myenv/bin/activate # Linux/Mac
+
+# Install dependencies (if first time)
 pip install -r requirements.txt
 
+# Run Server
+uvicorn api.main:app --reload
+```
+*API will be available at http://localhost:8000*
 
+### 3. Start Frontend
+Navigate to the frontend directory and start the dev server:
+```bash
+cd frontend
+npm install  # If first time
+npm run dev
+```
+*UI will be available at http://localhost:5173*
 
-Sprint 1 – Day 2 & Day 3 Documentation
+## 🖥️ System Access
 
-This project implements a secure biometric voice authentication system using SpeechBrain (ECAPA-TDNN).  
-Sprint 1 focuses on core speaker verification and enrollment functionality.
+| Component | URL | Description |
+|-----------|-----|-------------|
+| **Bio.VAN UI** | `http://localhost:5173` | Main User Interface |
+| **API Docs** | `http://localhost:8000/docs` | Swagger UI for Backend API |
+| **Attu (Milvus)** | `http://localhost:8001` | Visual Manager for Vector DB |
 
---------------------------------------------------
-SPRINT 1 – DAY 2: SPEAKER VERIFICATION (AUDIO ↔ AUDIO)
---------------------------------------------------
+## 📂 Project Structure
 
-Objective:
-Implement a speaker verification engine that compares two audio files and determines whether they belong to the same speaker.
+*   `/frontend`: React application source code.
+*   `/backend`: FastAPI application and ML logic.
+*   `/models`: Pre-trained SpeechBrain models.
+*   `/docker-compose.yml`: Infrastructure configuration.
 
-What Was Implemented:
-- Pretrained ECAPA-TDNN model using SpeechBrain
-- Audio loading and preprocessing
-- Sample rate enforcement at 16kHz
-- Minimum audio duration enforcement (3 seconds)
-- Speaker embedding extraction
-- Cosine similarity–based comparison
-- Threshold-based decision logic (≥ 0.80 = MATCH)
-
-Files Involved:
-src/core_engine.py  
-src/utils/audio_loader.py  
-
-Errors Faced and Solutions:
-- Windows symlink permission error (WinError 1314)
-  Cause: SpeechBrain attempted to create symbolic links on Windows
-  Solution: Enforced LocalStrategy.COPY for model fetching
-
-- Audio duration too short
-  Cause: ECAPA requires sufficient temporal context
-  Solution: Enforced minimum duration of 3 seconds
-
-- Incorrect sample rate
-  Cause: Input audio not in 16kHz
-  Solution: Forced 16kHz resampling during audio loading
-
-Outcome:
-- Audio-to-audio verification working correctly
-- Stable similarity scores
-- Windows-safe execution
-
---------------------------------------------------
-SPRINT 1 – DAY 3: SPEAKER ENROLLMENT (AUDIO → IDENTITY)
---------------------------------------------------
-
-Objective:
-Implement a speaker enrollment mechanism that creates a reusable speaker identity template.
-
-What Was Implemented:
-- Multi-audio enrollment for the same speaker
-- Mean aggregation of speaker embeddings
-- L2 normalization of speaker templates
-- Secure storage of templates as .npy files
-- Template-based verification (audio vs enrolled identity)
-- Privacy-by-design (no raw audio storage)
-
-Files Involved:
-src/enrollment.py  
-src/core_engine.py  
-src/main.py  
-models/speaker_001.npy  
-
-Errors Faced and Solutions:
-- Windows symlink error during enrollment
-  Cause: Default SpeechBrain symlink behavior
-  Solution: Enforced LocalStrategy.COPY in enrollment module
-
-- Audio file not found error
-  Cause: Duplicate "audio_samples/audio_samples" path resolution
-  Solution: Centralized path handling inside audio_loader.py
-
-- Incorrect enrollment audio paths
-  Cause: Placeholder sample filenames used
-  Solution: Replaced with actual audio files in audio_samples/
-
-Outcome:
-- Speaker templates generated successfully
-- Enrollment and verification pipeline functional
-- Identity-based authentication enabled
-- System ready for backend integration
-
---------------------------------------------------
-HOW TO RUN (SPRINT 1 DEMO)
---------------------------------------------------
-
-From the project root directory:
-
-python src/main.py
-
---------------------------------------------------
-KEY ENGINEERING LEARNINGS
---------------------------------------------------
-
-- Windows requires explicit handling of symbolic links in ML pipelines
-- Enrollment must use multiple audio samples from the same speaker
-- Path resolution should be handled in a single utility layer
-- Template-based verification is essential for real-world biometric systems
+## 📜 Recent Updates
+*   **Lore Terminal**: Replaced static lore text with a dynamic, animated terminal component.
+*   **Tablet Support**: Improved layout for verification page on tablet devices.
+*   **Attu Integration**: Added Attu service for easier vector database management.
