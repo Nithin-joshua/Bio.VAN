@@ -1,0 +1,83 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Orbitron:wght@400;500;700;900&display=swap');
+
+:root {
+  /* --- COLOR PALETTE --- */
+  --bg-dark: #050508;
+  /* Deepest Black-Blue */
+  --bg-panel: #0a0f14;
+  /* Slightly lighter for panels */
+
+  /* NEON ACCENTS */
+  --neon-blue: #00f3ff;
+  --neon-blue-dim: rgba(0, 243, 255, 0.1);
+  --neon-blue-glow: rgba(0, 243, 255, 0.5);
+
+  --neon-purple: #bc13fe;
+  --neon-purple-dim: rgba(188, 19, 254, 0.1);
+
+  --neon-green: #0aff68;
+  --neon-red: #ff2a2a;
+
+  /* TEXT */
+  --text-primary: #e0faff;
+  --text-secondary: #5e7a8a;
+  --text-muted: #3a4b55;
+
+  /* FONTS */
+  --font-header: 'Orbitron', list-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  /* GLASSMORPHISM */
+  --glass-bg: rgba(10, 15, 20, 0.6);
+  --glass-border: 1px solid rgba(0, 243, 255, 0.15);
+  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  --backdrop-blur: blur(12px);
+}
+
+/* --- BUTTON STYLES --- */
+.core-btn {
+  font-family: var(--font-header);
+  padding: 12px 24px;
+  background: rgba(0, 20, 25, 0.6);
+  /* Slightly more opaque background */
+  border: 1px solid var(--neon-blue);
+  /* Thinner but clearer border */
+  color: var(--neon-blue);
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 0 5px var(--neon-blue-dim);
+  backdrop-filter: blur(4px);
+  min-width: 180px;
+  display: inline-flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.core-btn:hover {
+  background: var(--neon-blue);
+  color: var(--bg-dark);
+  box-shadow: 0 0 20px var(--neon-blue-glow);
+  font-weight: bold;
+  transform: skew(-10deg);
+}
+
+.core-btn:active {
+  transform: scale(0.95) skew(-10deg);
+}
+
+.core-btn.secondary {
+  border-color: var(--text-secondary);
+  color: var(--text-secondary);
+  box-shadow: none;
+}
+
+.core-btn.secondary:hover {
+  background: var(--text-secondary);
+  color: var(--bg-dark);
+  box-shadow: 0 0 15px rgba(94, 122, 138, 0.5);
+}

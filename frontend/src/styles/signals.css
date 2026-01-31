@@ -1,0 +1,120 @@
+/* Mic Control */
+.mic-control-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 15px;
+}
+
+.mic-button {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.5);
+  border: 2px solid var(--neon-blue);
+  color: var(--neon-blue);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: all 0.3s ease;
+  box-shadow: 0 0 15px var(--neon-blue-dim);
+}
+
+.mic-button:hover:not(.disabled) {
+  background: var(--neon-blue-dim);
+  box-shadow: 0 0 30px var(--neon-blue);
+  transform: scale(1.05);
+}
+
+.mic-button.active {
+  border-color: var(--neon-red);
+  color: var(--neon-red);
+  box-shadow: 0 0 30px rgba(255, 42, 42, 0.4);
+}
+
+.mic-button.disabled {
+  border-color: var(--text-secondary);
+  color: var(--text-secondary);
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.mic-icon svg {
+  width: 32px;
+  height: 32px;
+}
+
+.stop-square {
+  width: 24px;
+  height: 24px;
+  background-color: var(--neon-red);
+  box-shadow: 0 0 10px var(--neon-red);
+}
+
+.mic-label {
+  font-size: 0.8rem;
+  letter-spacing: 2px;
+  color: var(--neon-blue);
+}
+
+.mic-label.recording {
+  color: var(--neon-red);
+  animation: blink 1s infinite;
+}
+
+/* Waveform Canvas */
+.waveform-canvas {
+  width: 100%;
+  height: 100%;
+  max-height: 200px;
+}
+
+/* Verification Results */
+.result-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background: rgba(2, 11, 20, 0.9);
+  z-index: 10;
+  backdrop-filter: blur(4px);
+}
+
+.result-icon {
+  font-size: 4rem;
+  margin-bottom: 1rem;
+  border: 4px solid currentColor;
+  border-radius: 50%;
+  width: 100px;
+  height: 100px;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.result-details {
+  font-size: 1.5rem;
+  letter-spacing: 3px;
+  font-weight: bold;
+}
+
+/* Status Colors */
+.result-overlay.verified {
+  color: var(--neon-green);
+  text-shadow: 0 0 20px var(--neon-green);
+}
+
+.result-overlay.rejected {
+  color: var(--neon-red);
+  text-shadow: 0 0 20px var(--neon-red);
+}
+
+.result-overlay.spoof {
+  color: #ff9100;
+  text-shadow: 0 0 20px #ff9100;
+}

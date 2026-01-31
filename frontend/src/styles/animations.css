@@ -1,0 +1,354 @@
+@keyframes blink {
+  0% { opacity: 1; }
+  50% { opacity: 0.3; }
+  100% { opacity: 1; }
+}
+
+.blink-text {
+  animation: blink 2s infinite;
+}
+
+/* Pulse Ring Animation */
+.pulse-container {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100px;
+  height: 100px;
+  pointer-events: none;
+}
+
+.pulse-ring {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 2px solid var(--neon-blue);
+  opacity: 0;
+}
+
+.ring-1 { animation: pulse-ripple 2s linear infinite; }
+.ring-2 { animation: pulse-ripple 2s linear infinite 0.6s; }
+.ring-3 { animation: pulse-ripple 2s linear infinite 1.2s; }
+
+@keyframes pulse-ripple {
+  0% {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+  50% {
+    opacity: 0.5;
+  }
+  100% {
+    transform: scale(2.5);
+    opacity: 0;
+  }
+}
+
+/* Scanner Loader */
+.scan-loader {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: rgba(0, 229, 255, 0.05);
+}
+
+.scan-line {
+  width: 100%;
+  height: 2px;
+  background: var(--neon-blue);
+  box-shadow: 0 0 15px var(--neon-blue);
+  position: absolute;
+  top: 0;
+  animation: scan-vertical 2s linear infinite;
+}
+
+@keyframes scan-vertical {
+  0% { top: 0%; opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { top: 100%; opacity: 0; }
+}
+
+@keyframes blink {
+  0% { opacity: 1; }
+  50% { opacity: 0.3; }
+  100% { opacity: 1; }
+}
+
+.blink-text {
+  animation: blink 0.8s steps(1) infinite; /* Hard blink like a terminal */
+}
+
+/* CRT Flicker effect applied to the whole screen container */
+@keyframes crt-flicker {
+  0% { opacity: 0.97; }
+  5% { opacity: 0.95; }
+  10% { opacity: 0.99; }
+  15% { opacity: 0.95; }
+  20% { opacity: 0.98; }
+  25% { opacity: 1; }
+  30% { opacity: 0.94; }
+  35% { opacity: 0.98; }
+  40% { opacity: 0.99; }
+  45% { opacity: 0.95; }
+  50% { opacity: 0.98; }
+  55% { opacity: 0.96; }
+  60% { opacity: 1; }
+  65% { opacity: 0.98; }
+  70% { opacity: 0.99; }
+  75% { opacity: 0.96; }
+  80% { opacity: 1; }
+  85% { opacity: 0.97; }
+  90% { opacity: 0.99; }
+  95% { opacity: 1; }
+  100% { opacity: 0.98; }
+}
+
+/* Background analog signal movement */
+@keyframes signal-drift {
+    0% { background-position: 0% 0%, 0% 0%; }
+    100% { background-position: 0% 100%, 100% 0%; }
+}
+
+/* Pulse Ring Animation - Existing */
+.pulse-container {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100px;
+  height: 100px;
+  pointer-events: none;
+}
+
+.pulse-ring {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 2px solid var(--neon-blue);
+  opacity: 0;
+  box-shadow: 0 0 10px var(--neon-blue-dim); /* Added shadow */
+}
+
+.ring-1 { animation: pulse-ripple 2s linear infinite; }
+.ring-2 { animation: pulse-ripple 2s linear infinite 0.6s; }
+.ring-3 { animation: pulse-ripple 2s linear infinite 1.2s; }
+
+@keyframes pulse-ripple {
+  0% {
+    transform: scale(0.5);
+    opacity: 0;
+  }
+  50% {
+    opacity: 0.5;
+  }
+  100% {
+    transform: scale(2.5);
+    opacity: 0;
+  }
+}
+
+/* Scanner Loader - Made grittier */
+.scan-loader {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: rgba(0, 240, 255, 0.02);
+  border: 1px dashed var(--neon-blue-dim);
+}
+
+.scan-line {
+  width: 100%;
+  height: 4px; /* Thicker line */
+  background: var(--neon-blue);
+  box-shadow: 0 0 20px var(--neon-blue-glow);
+  position: absolute;
+  top: 0;
+  animation: scan-vertical 1.5s cubic-bezier(0.4, 0.0, 0.2, 1) infinite;
+}
+
+@keyframes scan-vertical {
+  0% { top: -5%; opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { top: 105%; opacity: 0; }
+}
+
+@keyframes blink {
+  0% { opacity: 1; }
+  50% { opacity: 0.3; }
+  100% { opacity: 1; }
+}
+
+.blink-text {
+  animation: blink 0.8s steps(1) infinite;
+}
+
+/* --- LOGO STYLING --- */
+
+.logo-wrapper {
+  font-family: 'Courier New', monospace;
+  font-weight: bold;
+  letter-spacing: -2px; /* Tighten it up for a logo feel */
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  user-select: none;
+}
+
+/* Size Variants */
+.logo-container-lg {
+  font-size: 5rem;
+  margin-bottom: 1rem;
+}
+
+.logo-container-sm {
+  font-size: 1.5rem;
+}
+
+/* The "BIO" part */
+.logo-text {
+  color: var(--neon-blue);
+  text-shadow: 0 0 10px var(--neon-blue);
+}
+
+/* The Blinking Block Cursor */
+.logo-cursor {
+  color: var(--neon-blue);
+  opacity: 0.8;
+  animation: blink 1s steps(2) infinite;
+  font-size: 0.8em; /* Slightly smaller than text */
+  margin-top: 5px;
+}
+
+/* The Glitching "V" */
+.logo-glitch {
+  position: relative;
+  color: var(--text-primary);
+  /* The glitch animation */
+  animation: glitch-skew 3s infinite linear alternate-reverse;
+}
+
+/* Creating the Red/Blue split layers */
+.logo-glitch::before,
+.logo-glitch::after {
+  content: attr(data-text);
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0.8;
+}
+
+.logo-glitch::before {
+  color: var(--neon-red);
+  z-index: -1;
+  transform: translateX(-2px);
+  animation: glitch-anim-1 2.5s infinite linear alternate-reverse;
+}
+
+.logo-glitch::after {
+  color: var(--neon-blue);
+  z-index: -2;
+  transform: translateX(2px);
+  animation: glitch-anim-2 3s infinite linear alternate-reverse;
+}
+
+/* --- GLITCH KEYFRAMES --- */
+
+@keyframes glitch-skew {
+  0% { transform: skew(0deg); }
+  20% { transform: skew(0deg); }
+  22% { transform: skew(10deg); }
+  24% { transform: skew(-10deg); }
+  26% { transform: skew(0deg); }
+  100% { transform: skew(0deg); }
+}
+
+@keyframes glitch-anim-1 {
+  0% { clip-path: inset(20% 0 80% 0); transform: translate(-2px, 1px); }
+  20% { clip-path: inset(60% 0 10% 0); transform: translate(2px, -1px); }
+  40% { clip-path: inset(40% 0 50% 0); transform: translate(-2px, 2px); }
+  60% { clip-path: inset(80% 0 5% 0); transform: translate(2px, -2px); }
+  80% { clip-path: inset(10% 0 70% 0); transform: translate(-1px, 1px); }
+  100% { clip-path: inset(30% 0 50% 0); transform: translate(1px, -1px); }
+}
+
+@keyframes glitch-anim-2 {
+  0% { clip-path: inset(10% 0 60% 0); transform: translate(2px, -1px); }
+  20% { clip-path: inset(80% 0 5% 0); transform: translate(-2px, 2px); }
+  40% { clip-path: inset(30% 0 20% 0); transform: translate(2px, 1px); }
+  60% { clip-path: inset(10% 0 80% 0); transform: translate(-1px, -2px); }
+  80% { clip-path: inset(50% 0 30% 0); transform: translate(1px, 2px); }
+  100% { clip-path: inset(20% 0 70% 0); transform: translate(-2px, 1px); }
+}
+
+/* Existing Pulse Ring CSS below... */
+.pulse-container {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100px;
+  height: 100px;
+  pointer-events: none;
+}
+
+.pulse-ring {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 2px solid var(--neon-blue);
+  opacity: 0;
+  box-shadow: 0 0 10px var(--neon-blue-dim);
+}
+
+.ring-1 { animation: pulse-ripple 2s linear infinite; }
+.ring-2 { animation: pulse-ripple 2s linear infinite 0.6s; }
+.ring-3 { animation: pulse-ripple 2s linear infinite 1.2s; }
+
+@keyframes pulse-ripple {
+  0% { transform: scale(0.5); opacity: 0; }
+  50% { opacity: 0.5; }
+  100% { transform: scale(2.5); opacity: 0; }
+}
+
+/* Scanner Loader */
+.scan-loader {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: rgba(0, 240, 255, 0.02);
+  border: 1px dashed var(--neon-blue-dim);
+}
+
+.scan-line {
+  width: 100%;
+  height: 4px;
+  background: var(--neon-blue);
+  box-shadow: 0 0 20px var(--neon-blue-glow);
+  position: absolute;
+  top: 0;
+  animation: scan-vertical 1.5s cubic-bezier(0.4, 0.0, 0.2, 1) infinite;
+}
+
+@keyframes scan-vertical {
+  0% { top: -5%; opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { top: 105%; opacity: 0; }
+}
