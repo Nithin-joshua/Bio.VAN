@@ -3,6 +3,7 @@ import { useRecorder } from '../audio/useRecorder';
 import { useWaveformAnalyzer } from '../audio/useWaveformAnalyzer';
 import { authenticateVoiceSample } from '../api/verify.api';
 import { useToast } from '../context/ToastContext';
+import { VERIFICATION_PARAGRAPH } from '../data/phonetics';
 
 // UI Components
 import MicControl from '../components/biometric/MicControl';
@@ -27,6 +28,7 @@ const VerifyPage = () => {
   const [verificationStatus, setVerificationStatus] = useState('idle');
   const [similarityScore, setSimilarityScore] = useState(0);
   const [terminalLogs, setTerminalLogs] = useState([]);
+  const [targetUserId, setTargetUserId] = useState('');
 
   const { isRecording, stream, startRecording, stopRecording } = useRecorder();
   const audioData = useWaveformAnalyzer(stream);
@@ -85,7 +87,8 @@ const VerifyPage = () => {
     appendTerminalLog('TRANSMITTING TO CORE...');
 
     try {
-      const authenticationResult = await authenticateVoiceSample(audioBlob);
+      // Use targetUserId if provided for 1:1 verification
+      const authenticationResult = await authenticateVoiceSample(audioBlob, targetUserId);
       setSimilarityScore(authenticationResult.similarity_score);
 
       if (authenticationResult.spoof) {
@@ -145,8 +148,59 @@ const VerifyPage = () => {
             <VerificationStatus status={verificationStatus} />
           </div>
 
+          {/* Verification Paragraph Display */}
+          <div style={{
+            margin: '1rem auto',
+            padding: '1rem',
+            background: 'rgba(0, 243, 255, 0.05)',
+            borderLeft: '2px solid var(--primary-color)',
+            color: 'white',
+            textAlign: 'center',
+            fontFamily: 'var(--font-header)',
+            letterSpacing: '0.5px',
+            maxWidth: '80%',
+            fontSize: '1.1rem',
+            lineHeight: '1.5'
+          }}>
+            "{VERIFICATION_PARAGRAPH.text}"
+          </div>
+
           {/* Control buttons area */}
           <div className="controls-area" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
+            
+            {/* Target ID Input for 1:1 Verification */}
+            <div style={{ width: '100%', maxWidth: '300px', marginBottom: '0.5rem' }}>
+              <label style={{ 
+                display: 'block', 
+                color: 'var(--text-secondary)', 
+                marginBottom: '0.5rem', 
+                fontSize: '0.8rem', 
+                letterSpacing: '1px' 
+              }}>
+                TARGET IDENTITY (OPTIONAL)
+              </label>
+              <input
+                type="text"
+                value={targetUserId}
+                onChange={(e) => setTargetUserId(e.target.value)}
+                placeholder="ENTER OPERATOR ID"
+                disabled={verificationStatus === 'processing' || verificationStatus === 'recording'}
+                style={{
+                  width: '100%',
+                  padding: '0.8rem',
+                  background: 'rgba(0, 20, 40, 0.5)',
+                  border: '1px solid var(--primary-color)',
+                  color: 'white',
+                  borderRadius: '4px',
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: '1rem',
+                  textAlign: 'center',
+                  outline: 'none',
+                  boxShadow: '0 0 10px rgba(0, 243, 255, 0.1)'
+                }}
+              />
+            </div>
+
             <StatusMessage status={verificationStatus} similarity={similarityScore} />
 
             {/* Show reset button after verification completes, otherwise show mic control */}

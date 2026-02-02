@@ -99,7 +99,7 @@ const AdminPage = () => {
                                     <tbody>
                                         {personnelRegistry.map((user) => (
                                             <tr key={user.id} className="registry-row" style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.1)', transition: 'background 0.2s' }}>
-                                                <td style={{ padding: '1rem' }}>{String(user.id).padStart(4, '0')}</td>
+                                                <td style={{ padding: '1rem', fontFamily: 'monospace', letterSpacing: '1px' }}>{user.id}</td>
                                                 <td style={{ padding: '1rem', fontWeight: 'bold' }}>{user.full_name}</td>
                                                 <td style={{ padding: '1rem' }}>{user.email}</td>
                                                 <td style={{ padding: '1rem' }}>

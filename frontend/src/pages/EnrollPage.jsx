@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, Component } from 'react';
 import { Link } from 'react-router-dom';
 import { useToast } from '../context/ToastContext';
 import Button from '../components/core/Button';
@@ -10,6 +10,34 @@ import VoiceRecorder from '../components/biometric/VoiceRecorder';
 import { PHONETIC_PARAGRAPHS } from '../data/phonetics';
 import { registerUserVoiceprint } from '../api/enroll.api';
 import '../styles/components.css';
+
+class ErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error("Uncaught error:", error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div style={{ padding: '2rem', textAlign: 'center', color: 'red' }}>
+          <h3>System Error</h3>
+          <p>{this.state.error?.toString()}</p>
+          <Button onClick={() => window.location.reload()}>REBOOT SYSTEM</Button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 /**
  * User Enrollment Page
@@ -26,11 +54,13 @@ const EnrollPage = () => {
   // Track current step in the enrollment process (0-4)
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmittingToServer, setIsSubmittingToServer] = useState(false);
+  const [generatedUserId, setGeneratedUserId] = useState(null);
 
   // User enrollment data collected across all steps
   const [enrollmentData, setEnrollmentData] = useState({
     fullName: '',
     email: '',
+    // password: '', // Removed
     role: 'personnel',
     recordings: {}  // Will store 3 voice sample blobs keyed by sample_1, sample_2, sample_3
   });
@@ -42,9 +72,35 @@ const EnrollPage = () => {
   const proceedToNextStep = async () => {
     if (currentStep === 3) {
       // Final step: Submit all collected data to backend
+      
+      // Safety Check: Ensure all required data is present
+      // This handles cases where user might have been mid-enrollment during code updates
+      if (!enrollmentData.fullName || !enrollmentData.email) {
+        showToast("Security Protocol Error: Missing Credentials. Returning to Phase 1.", "error");
+        setCurrentStep(0);
+        return;
+      }
+
+      // Verify all voice samples are recorded
+      const missingSamples = PHONETIC_PARAGRAPHS.filter(p => !enrollmentData.recordings[p.id]);
+      if (missingSamples.length > 0) {
+        showToast(`Voice Calibration Incomplete. Missing: ${missingSamples.map(s => s.label).join(', ')}`, "error");
+        // Go back to the first missing sample
+        const firstMissingIndex = PHONETIC_PARAGRAPHS.findIndex(p => !enrollmentData.recordings[p.id]);
+        if (firstMissingIndex !== -1) {
+             // Step 0 is info, Step 1 is Sample 1 (index 0)
+             setCurrentStep(firstMissingIndex + 1);
+        }
+        return;
+      }
+
       setIsSubmittingToServer(true);
       try {
-        await registerUserVoiceprint(enrollmentData);
+        const response = await registerUserVoiceprint(enrollmentData);
+        // Ensure user_id is set before moving to next step
+        if (response && response.user_id) {
+          setGeneratedUserId(response.user_id);
+        }
         showToast('Registration Successful. Identity Encoded.', 'success');
         setCurrentStep(prev => prev + 1);
       } catch (error) {
@@ -105,6 +161,9 @@ const EnrollPage = () => {
                   placeholder="user@network.com"
                 />
               </div>
+              
+              {/* Password field removed as per directive */}
+
               <div className="cyber-input-group">
                 <label className="cyber-label">CLEARANCE LEVEL</label>
                 <Select
@@ -159,6 +218,7 @@ const EnrollPage = () => {
 
               {/* Voice recorder component handles recording UI */}
               <VoiceRecorder
+                key={currentSample.id}
                 label={currentSample.label}
                 onRecordingComplete={(blob) => saveVoiceSample(blob, currentSample.id)}
               />
@@ -183,6 +243,12 @@ const EnrollPage = () => {
             <div style={{ padding: '2rem', textAlign: 'center', maxWidth: '400px' }}>
               <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🎉</div>
               <h3 style={{ color: 'var(--primary-color)', marginBottom: '1rem' }}>IDENTITY ENCODED</h3>
+              {generatedUserId && (
+                <div style={{ margin: '1rem 0', padding: '1rem', border: '1px dashed var(--primary-color)', background: 'rgba(0, 243, 255, 0.05)' }}>
+                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginBottom: '0.5rem' }}>ASSIGNED OPERATOR ID</p>
+                  <p style={{ color: 'white', fontSize: '2rem', fontFamily: 'var(--font-mono)', letterSpacing: '2px' }}>{generatedUserId}</p>
+                </div>
+              )}
               <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem' }}>
                 Voice profile has been successfully integrated for <strong style={{ color: 'white' }}>{enrollmentData.fullName}</strong>.
               </p>
@@ -198,24 +264,26 @@ const EnrollPage = () => {
   };
 
   return (
-    <div className="page-container" style={{ justifyContent: 'center', alignItems: 'center' }}>
-      <SystemStatus />
-      {/* Page header with logo and title */}
-      <div style={{ marginBottom: '2rem', textAlign: 'center' }}>
-        <Logo size="medium" style={{ justifyContent: 'center' }} />
-        <h2 style={{ fontFamily: 'var(--font-header)', color: 'var(--text-secondary)', letterSpacing: '4px', fontSize: '1rem', marginTop: '1rem' }}>
-          NEW USER ENROLLMENT PROTOCOL
-        </h2>
-      </div>
+    <ErrorBoundary>
+      <div className="page-container" style={{ justifyContent: 'center', alignItems: 'center' }}>
+        <SystemStatus />
+        {/* Page header with logo and title */}
+        <div style={{ marginBottom: '2rem', textAlign: 'center' }}>
+          <Logo size="medium" style={{ justifyContent: 'center' }} />
+          <h2 style={{ fontFamily: 'var(--font-header)', color: 'var(--text-secondary)', letterSpacing: '4px', fontSize: '1rem', marginTop: '1rem' }}>
+            NEW USER ENROLLMENT PROTOCOL
+          </h2>
+        </div>
 
-      {/* Render current step content (form, voice recorder, or success message) */}
-      {renderProtocolInterface()}
+        {/* Render current step content (form, voice recorder, or success message) */}
+        {renderProtocolInterface()}
 
-      {/* Footer with version info */}
-      <div style={{ marginTop: '2rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-        SECURE_CORE // V2.0.4
+        {/* Footer with version info */}
+        <div style={{ marginTop: '2rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+          SECURE_CORE // V2.0.4
+        </div>
       </div>
-    </div>
+    </ErrorBoundary>
   );
 };
 

@@ -13,7 +13,7 @@ SessionLocal = sessionmaker(bind=engine)
 class User(Base):
     __tablename__ = "users"
 
-    id = Column(Integer, primary_key=True, index=True)
+    id = Column(String, primary_key=True, index=True)
     full_name = Column(String)
     email = Column(String, unique=True, index=True)
     role = Column(String)
@@ -25,7 +25,7 @@ class AuthLog(Base):
     __tablename__ = "auth_logs"
 
     id = Column(Integer, primary_key=True)
-    speaker_id = Column(Integer)
+    speaker_id = Column(String)
     score = Column(Float)
     decision = Column(String)
     timestamp = Column(DateTime, default=datetime.utcnow)
@@ -33,15 +33,30 @@ class AuthLog(Base):
 def init_db():
     Base.metadata.create_all(engine)
 
-def create_user(full_name: str, email: str, role: str, hashed_password: str = None):
+def create_user(full_name: str, email: str, role: str, user_id: str, hashed_password: str = None):
     session = SessionLocal()
     try:
         # Check if user exists
-        existing_user = session.query(User).filter(User.email == email).first()
+        existing_user = session.query(User).filter(User.id == user_id).first()
         if existing_user:
+            # Update existing user's details if provided
+            if hashed_password:
+                existing_user.hashed_password = hashed_password
+            if full_name:
+                existing_user.full_name = full_name
+            if email:
+                existing_user.email = email
+            if role:
+                existing_user.role = role
+            # Reset voice profile status to active as we are re-enrolling
+            existing_user.voice_profile_status = "active"
+            
+            session.commit()
+            session.refresh(existing_user)
             return existing_user
         
         new_user = User(
+            id=user_id,
             full_name=full_name,
             email=email,
             role=role,

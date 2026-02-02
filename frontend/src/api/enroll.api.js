@@ -25,6 +25,7 @@ export const registerUserVoiceprint = async (enrollmentData) => {
     // Add user profile information
     formData.append('full_name', enrollmentData.fullName);
     formData.append('email', enrollmentData.email);
+    // formData.append('password', enrollmentData.password); // Removed
     formData.append('role', enrollmentData.role);
 
     // Attach voice recordings as audio files
@@ -33,7 +34,7 @@ export const registerUserVoiceprint = async (enrollmentData) => {
         Object.keys(enrollmentData.recordings).forEach((sampleKey) => {
             const audioBlob = enrollmentData.recordings[sampleKey];
             // Append with a filename for backend processing
-            formData.append(sampleKey, audioBlob, `${sampleKey}.webm`);
+            formData.append(sampleKey, audioBlob, `${sampleKey}.wav`);
         });
     }
 
@@ -47,7 +48,22 @@ export const registerUserVoiceprint = async (enrollmentData) => {
         if (!response.ok) {
             // Try to extract error details from server response
             const serverErrorDetails = await response.json().catch(() => ({}));
-            throw new Error(serverErrorDetails.detail || `Server Error: ${response.statusText}`);
+            
+            let errorMessage = `Server Error: ${response.statusText}`;
+            
+            if (serverErrorDetails.detail) {
+                if (Array.isArray(serverErrorDetails.detail)) {
+                    // Handle FastAPI validation errors (array of objects)
+                    errorMessage = serverErrorDetails.detail
+                        .map(err => `${err.loc[1]}: ${err.msg}`)
+                        .join('\n');
+                } else {
+                    // Handle standard string errors
+                    errorMessage = serverErrorDetails.detail;
+                }
+            }
+            
+            throw new Error(errorMessage);
         }
 
         const serverResponse = await response.json();

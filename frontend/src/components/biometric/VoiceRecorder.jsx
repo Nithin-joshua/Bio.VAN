@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Button from '../core/Button';
 import Card from '../ui/Card';
+import CyberAudioPlayer from '../ui/CyberAudioPlayer';
 
 const VoiceRecorder = ({ onRecordingComplete, label = "Voice Sample" }) => {
     const [isRecording, setIsRecording] = useState(false);
@@ -73,10 +74,77 @@ const VoiceRecorder = ({ onRecordingComplete, label = "Voice Sample" }) => {
         draw();
     }
 
+    // Helper to convert AudioBuffer to WAV Blob
+    const audioBufferToWav = (buffer) => {
+        const numOfChan = buffer.numberOfChannels;
+        const length = buffer.length * numOfChan * 2 + 44;
+        const bufferArr = new ArrayBuffer(length);
+        const view = new DataView(bufferArr);
+        const channels = [];
+        let i;
+        let sample;
+        let offset = 0;
+        let pos = 0;
+
+        // write RIFF chunk descriptor
+        setUint32(0x46464952); // "RIFF"
+        setUint32(36 + buffer.length * numOfChan * 2); // file length - 8
+        setUint32(0x45564157); // "WAVE"
+
+        // write fmt sub-chunk
+        setUint32(0x20746d66); // "fmt "
+        setUint32(16); // length = 16
+        setUint16(1); // PCM (uncompressed)
+        setUint16(numOfChan);
+        setUint32(buffer.sampleRate);
+        setUint32(buffer.sampleRate * 2 * numOfChan); // avg. bytes/sec
+        setUint16(numOfChan * 2); // block-align
+        setUint16(16); // 16-bit (hardcoded in this example)
+
+        // write data sub-chunk
+        setUint32(0x61746164); // "data"
+        setUint32(buffer.length * numOfChan * 2); // chunk size
+
+        // write interleaved data
+        for (i = 0; i < buffer.numberOfChannels; i++)
+            channels.push(buffer.getChannelData(i));
+
+        while (pos < buffer.length) {
+            for (i = 0; i < numOfChan; i++) {
+                // clamp
+                sample = Math.max(-1, Math.min(1, channels[i][pos]));
+                // scale to 16-bit signed int
+                sample = (0.5 + sample < 0 ? sample * 32768 : sample * 32767) | 0;
+                view.setInt16(offset, sample, true);
+                offset += 2;
+            }
+            pos++;
+        }
+
+        return new Blob([view], { type: "audio/wav" });
+
+        function setUint16(data) {
+            view.setUint16(offset, data, true);
+            offset += 2;
+        }
+
+        function setUint32(data) {
+            view.setUint32(offset, data, true);
+            offset += 4;
+        }
+    };
+
     const startRecording = async () => {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            mediaRecorderRef.current = new MediaRecorder(stream);
+            
+            // Use optimal mime type
+            let mimeType = 'audio/webm';
+            if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+                mimeType = 'audio/webm;codecs=opus';
+            }
+            
+            mediaRecorderRef.current = new MediaRecorder(stream, { mimeType });
 
             startVisualizer(stream);
 
@@ -86,12 +154,40 @@ const VoiceRecorder = ({ onRecordingComplete, label = "Voice Sample" }) => {
                 }
             };
 
-            mediaRecorderRef.current.onstop = () => {
-                const blob = new Blob(chunksRef.current, { type: 'audio/webm' });
-                const url = URL.createObjectURL(blob);
-                setAudioURL(url);
-                if (onRecordingComplete) onRecordingComplete(blob);
+            mediaRecorderRef.current.onstop = async () => {
+                const webmBlob = new Blob(chunksRef.current, { type: mimeType });
                 chunksRef.current = [];
+
+                if (webmBlob.size === 0) {
+                    setError("Recording was empty. Please try again.");
+                    // Stop tracks just in case
+                    stream.getTracks().forEach(track => track.stop());
+                    return;
+                }
+
+                // Convert to WAV
+                try {
+                    const arrayBuffer = await webmBlob.arrayBuffer();
+                    
+                    if (!audioContextRef.current) {
+                        audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
+                    }
+                    
+                    // Ensure context is running
+                    if (audioContextRef.current.state === 'suspended') {
+                        await audioContextRef.current.resume();
+                    }
+
+                    const audioBuffer = await audioContextRef.current.decodeAudioData(arrayBuffer);
+                    const wavBlob = audioBufferToWav(audioBuffer);
+                    
+                    const url = URL.createObjectURL(wavBlob);
+                    setAudioURL(url);
+                    if (onRecordingComplete) onRecordingComplete(wavBlob);
+                } catch (err) {
+                    console.error("Error converting audio to WAV:", err);
+                    setError(`Processing failed: ${err.message || "Unknown error"}. Please retake.`);
+                }
 
                 // Stop all tracks
                 stream.getTracks().forEach(track => track.stop());
@@ -146,10 +242,10 @@ const VoiceRecorder = ({ onRecordingComplete, label = "Voice Sample" }) => {
                     )}
 
                     {!isRecording && audioURL && (
-                        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
-                            <audio src={audioURL} controls style={{ height: '30px' }} />
-                            <Button onClick={() => setAudioURL(null)} variant="secondary">
-                                RETAKE
+                        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', width: '100%', justifyContent: 'center', flexDirection: 'column' }}>
+                            <CyberAudioPlayer src={audioURL} />
+                            <Button onClick={() => setAudioURL(null)} variant="secondary" style={{ width: '100%', maxWidth: '200px' }}>
+                                RE-CALIBRATE (RETAKE)
                             </Button>
                         </div>
                     )}

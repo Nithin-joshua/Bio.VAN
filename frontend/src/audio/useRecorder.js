@@ -24,17 +24,20 @@ export const useRecorder = () => {
    */
   const startRecording = useCallback(async () => {
     try {
-      // Request microphone access with specific audio constraints
+      // Request microphone access with default constraints to match enrollment
       const audioStream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: true,  // Removes echo for clearer voice
-          noiseSuppression: true,  // Filters background noise
-          autoGainControl: false   // Disabled to preserve natural voice characteristics for biometric matching
-        }
+        audio: true
       });
 
       setStream(audioStream);
-      audioRecorder.current = new MediaRecorder(audioStream);
+      
+      // Use optimal mime type (same as VoiceRecorder.jsx)
+      let mimeType = 'audio/webm';
+      if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+          mimeType = 'audio/webm;codecs=opus';
+      }
+      
+      audioRecorder.current = new MediaRecorder(audioStream, { mimeType });
       recordedAudioChunks.current = [];
 
       // Collect audio data chunks as they become available
@@ -52,31 +55,117 @@ export const useRecorder = () => {
     }
   }, []);
 
+  // Helper to convert AudioBuffer to WAV Blob
+  const audioBufferToWav = (buffer) => {
+    const numOfChan = buffer.numberOfChannels;
+    const length = buffer.length * numOfChan * 2 + 44;
+    const bufferArr = new ArrayBuffer(length);
+    const view = new DataView(bufferArr);
+    const channels = [];
+    let i;
+    let sample;
+    let offset = 0;
+    let pos = 0;
+
+    // write RIFF chunk descriptor
+    setUint32(0x46464952); // "RIFF"
+    setUint32(36 + buffer.length * numOfChan * 2); // file length - 8
+    setUint32(0x45564157); // "WAVE"
+
+    // write fmt sub-chunk
+    setUint32(0x20746d66); // "fmt "
+    setUint32(16); // length = 16
+    setUint16(1); // PCM (uncompressed)
+    setUint16(numOfChan);
+    setUint32(buffer.sampleRate);
+    setUint32(buffer.sampleRate * 2 * numOfChan); // avg. bytes/sec
+    setUint16(numOfChan * 2); // block-align
+    setUint16(16); // 16-bit (hardcoded in this example)
+
+    // write data sub-chunk
+    setUint32(0x61746164); // "data"
+    setUint32(buffer.length * numOfChan * 2); // chunk size
+
+    // write interleaved data
+    for (i = 0; i < buffer.numberOfChannels; i++)
+        channels.push(buffer.getChannelData(i));
+
+    while (pos < buffer.length) {
+        for (i = 0; i < numOfChan; i++) {
+            // clamp
+            sample = Math.max(-1, Math.min(1, channels[i][pos]));
+            // scale to 16-bit signed int
+            sample = (0.5 + sample < 0 ? sample * 32768 : sample * 32767) | 0;
+            view.setInt16(offset, sample, true);
+            offset += 2;
+        }
+        pos++;
+    }
+
+    return new Blob([view], { type: "audio/wav" });
+
+    function setUint16(data) {
+        view.setUint16(offset, data, true);
+        offset += 2;
+    }
+
+    function setUint32(data) {
+        view.setUint32(offset, data, true);
+        offset += 4;
+    }
+  };
+
   /**
    * Stops the current recording and returns the audio as a Blob.
    * Uses a Promise to ensure the blob is fully created before returning.
    * Also cleans up the media stream to turn off the microphone indicator light.
    * 
-   * @returns {Promise<Blob|null>} Audio blob in webm format, or null if no recording exists
+   * @returns {Promise<Blob|null>} Audio blob in wav format, or null if no recording exists
    */
   const stopRecording = useCallback(() => {
     return new Promise((resolve) => {
       if (!audioRecorder.current) return resolve(null);
 
       // Set up the stop handler before stopping (ensures we catch the event)
-      audioRecorder.current.onstop = () => {
-        // Combine all recorded chunks into a single blob
-        const audioBlob = new Blob(recordedAudioChunks.current, { type: 'audio/webm' });
-
-        // Important: Stop all tracks to release the microphone
-        // This turns off the recording indicator light in the browser/OS
-        if (stream) {
-          stream.getTracks().forEach(track => track.stop());
+      audioRecorder.current.onstop = async () => {
+        // Use the same mimeType as creation
+        let mimeType = 'audio/webm';
+        if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+            mimeType = 'audio/webm;codecs=opus';
         }
 
-        setStream(null);
-        setIsRecording(false);
-        resolve(audioBlob);
+        // Combine all recorded chunks into a single blob
+        const webmBlob = new Blob(recordedAudioChunks.current, { type: mimeType });
+
+        // Convert to WAV
+        try {
+            const arrayBuffer = await webmBlob.arrayBuffer();
+            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
+            const wavBlob = audioBufferToWav(audioBuffer);
+            
+            // Cleanup context
+            audioCtx.close();
+            
+            // Important: Stop all tracks to release the microphone
+            // This turns off the recording indicator light in the browser/OS
+            if (stream) {
+              stream.getTracks().forEach(track => track.stop());
+            }
+
+            setStream(null);
+            setIsRecording(false);
+            resolve(wavBlob);
+        } catch (err) {
+            console.error("Error converting to WAV:", err);
+            // Fallback to webm if conversion fails, though backend might reject it
+            if (stream) {
+                stream.getTracks().forEach(track => track.stop());
+            }
+            setStream(null);
+            setIsRecording(false);
+            resolve(webmBlob);
+        }
       };
 
       // Trigger the stop event

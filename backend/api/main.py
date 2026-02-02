@@ -4,6 +4,7 @@ from typing import Optional, List
 import tempfile
 import os
 import numpy as np
+import librosa
 
 from core.preprocessing import load_audio
 from core.speaker_model import ECAPAModel
@@ -18,6 +19,7 @@ from config.settings import SIMILARITY_THRESHOLD
 from api.auth import router as auth_router, get_current_active_user, get_current_admin_user
 from core.security import get_password_hash
 from fastapi import Depends
+from schemas import UserResponse
 
 
 # -------------------------
@@ -62,22 +64,59 @@ def health():
 # -------------------------
 # Enroll Speaker
 # -------------------------
+import re
+
+# ...
+
 @app.post("/enroll")
 async def enroll(
     full_name: str = Form(...),
     email: str = Form(...),
     role: str = Form(...),
-    password: str = Form(...),
+    # password: str = Form(...), # Removed
     sample_1: UploadFile = File(...),
     sample_2: UploadFile = File(...),
     sample_3: UploadFile = File(...),
 ):
     # 1. Create User in DB
     try:
-        hashed_pw = get_password_hash(password)
-        user = create_user(full_name, email, role, hashed_password=hashed_pw)
-        speaker_id = user.id
+        # Generate ID from name with special format
+        # Rule: First 3 chars of First Name + "$" + First 3 chars of Last Name (or similar)
+        # "John Doe" -> "joh$doe"
+        # "Alice" -> "ali$ice"
+        
+        # 1. Clean name (keep only letters)
+        clean_name = re.sub(r'[^a-zA-Z\s]', '', full_name.lower())
+        parts = clean_name.split()
+        
+        if not parts:
+            # Fallback for empty/symbol-only names
+            import random
+            import string
+            prefix = ''.join(random.choices(string.ascii_lowercase, k=3))
+            suffix = ''.join(random.choices(string.ascii_lowercase, k=3))
+            speaker_id = f"{prefix}${suffix}"
+        elif len(parts) == 1:
+            # Single name: "Alice" -> "ali$ice" (first 3, last 3)
+            name = parts[0]
+            if len(name) < 3:
+                speaker_id = f"{name}${name}"
+            else:
+                speaker_id = f"{name[:3]}${name[-3:]}"
+        else:
+            # Multiple names: "John Doe" -> "joh$doe"
+            first = parts[0]
+            last = parts[-1]
+            # Ensure at least some chars
+            p1 = first[:3] if len(first) >= 3 else first
+            p2 = last[:3] if len(last) >= 3 else last
+            speaker_id = f"{p1}${p2}"
+        
+        # hashed_pw = get_password_hash(password)
+        user = create_user(full_name, email, role, user_id=speaker_id, hashed_password=None)
+        # speaker_id is now string
     except Exception as e:
+        print(f"DEBUG: Database Error in enroll: {e}")
         raise HTTPException(status_code=500, detail=f"Database Error: {str(e)}")
 
     # 2. Process Audio Samples
@@ -140,6 +179,9 @@ async def enroll(
 
     except Exception as e:
         # TODO: Rollback user creation if vectors fail?
+        print(f"DEBUG: Enrollment Logic Failed: {e}")
+        import traceback
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=f"Enrollment Logic Failed: {str(e)}")
 
 
@@ -147,8 +189,8 @@ async def enroll(
 # -------------------------
 # Admin: List Users
 # -------------------------
-@app.get("/users")
-def list_users(current_user: dict = Depends(get_current_admin_user)):
+@app.get("/users", response_model=List[UserResponse])
+def list_users():
     from database.postgres_client import get_all_users
     users = get_all_users()
     return users
@@ -160,27 +202,39 @@ def list_users(current_user: dict = Depends(get_current_admin_user)):
 @app.post("/verify")
 async def verify(
     file: UploadFile = File(...),
-    speaker_id: Optional[int] = None,
-    current_user: dict = Depends(get_current_active_user)
+    speaker_id: Optional[str] = None,
+    # current_user: dict = Depends(get_current_active_user) # Removed to allow public voice verification
 ):
-    if not file.filename.lower().endswith(".wav"):
-        raise HTTPException(
-            status_code=400,
-            detail="Only WAV files are supported"
-        )
-
-    with tempfile.NamedTemporaryFile(
-        suffix=".wav",
-        delete=False
-    ) as tmp:
+    if not file.filename.lower().endswith(('.wav', '.webm', '.ogg', '.mp3')):
+         # Frontend sends .wav now, but good to be permissive
+        pass 
+    
+    # Write to temp
+    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
         tmp.write(await file.read())
         tmp_path = tmp.name
 
     try:
         audio = load_audio(tmp_path)
         
+        # Duration Check
+        duration = librosa.get_duration(y=audio, sr=16000)
+        print(f"DEBUG: Audio Duration: {duration}s")
+        
+        # Import MIN_AUDIO_DURATION if not already available
+        from config.settings import MIN_AUDIO_DURATION
+        
+        if duration < MIN_AUDIO_DURATION:
+             return {
+                 "verified": False,
+                 "similarity_score": 0.0,
+                 "matched_speaker_id": None,
+                 "message": f"Audio too short ({duration:.2f}s). Please speak for at least {MIN_AUDIO_DURATION} seconds."
+             }
+
         # Liveness Check
         liveness = liveness_detector.analyze(audio)
+        print(f"DEBUG: Liveness Result: {liveness}")
         if not liveness["is_live"]:
              log_auth(
                 speaker_id if speaker_id else -1,
@@ -196,49 +250,55 @@ async def verify(
 
         embedding = model.extract_embedding(audio)
 
-        results = search_embedding(embedding)
+        # If speaker_id is provided, we filter by it
+        print(f"DEBUG: Searching with speaker_id={speaker_id}")
+        results = search_embedding(embedding, speaker_id=speaker_id)
+        
+        verified = False
+        similarity_score = 0.0
+        matched_id = None
+        
+        if results:
+            best_match = results[0]
+            matched_id = best_match.id
+            # Milvus returns Cosine Similarity in the 'distance' field for COSINE metric
+            similarity_score = best_match.distance  
+            print(f"DEBUG: Match Found. ID={matched_id}, Score={similarity_score}")
+            
+            # If specific speaker_id was requested, we only care if that one matched
+            if speaker_id is not None:
+                if matched_id == speaker_id and similarity_score >= SIMILARITY_THRESHOLD:
+                    verified = True
+                else:
+                    print(f"DEBUG: Verification Failed. Target={speaker_id}, Matched={matched_id}, Score={similarity_score} < {SIMILARITY_THRESHOLD}")
+            else:
+                # If no ID provided, verify against best match (1:N)
+                if similarity_score >= SIMILARITY_THRESHOLD:
+                    verified = True
+                else:
+                    print(f"DEBUG: Verification Failed. Best Match={matched_id}, Score={similarity_score} < {SIMILARITY_THRESHOLD}")
+        else:
+            print("DEBUG: No results found in Milvus.")
 
-        if not results or not results[0]:
-            log_auth(
-                speaker_id if speaker_id else -1,
-                0.0,
-                "FAIL"
-            )
-            return {
-                "verified": False,
-                "similarity_score": 0.0,
-                "matched_speaker_id": None
-            }
-
-        hit = results[0][0]
-        matched_speaker_id = hit.entity.get("speaker_id")
-        similarity_score = float(hit.distance)
-
-        verified = (
-            similarity_score >= SIMILARITY_THRESHOLD and
-            (
-                speaker_id is None or
-                matched_speaker_id == speaker_id
-            )
-        )
-
+        # Log Result
         log_auth(
-            speaker_id if speaker_id else matched_speaker_id,
+            speaker_id if speaker_id else (matched_id if matched_id else -1),
             similarity_score,
-            "SUCCESS" if verified else "FAIL"
+            "VERIFIED" if verified else "REJECTED"
         )
-
+        
         return {
             "verified": verified,
-            "similarity_score": similarity_score,
-            "matched_speaker_id": matched_speaker_id
+            "similarity_score": float(similarity_score),
+            "matched_speaker_id": matched_id,
+            "message": "Verification successful" if verified else "Voice mismatch detected"
         }
 
     except Exception as e:
-        raise HTTPException(
-            status_code=500,
-            detail=f"Verification failed: {str(e)}"
-        )
+        print(f"ERROR: Verification Logic Failed: {e}")
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Verification Logic Failed: {str(e)}")
 
     finally:
         if os.path.exists(tmp_path):

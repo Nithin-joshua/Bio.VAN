@@ -35,7 +35,8 @@ def init_milvus(retries: int = 10, delay: int = 2):
                 fields = [
                     FieldSchema(
                         name="speaker_id",
-                        dtype=DataType.INT64,
+                        dtype=DataType.VARCHAR,
+                        max_length=128,
                         is_primary=True,
                         auto_id=False
                     ),
@@ -82,8 +83,14 @@ def init_milvus(retries: int = 10, delay: int = 2):
     raise last_error
 
 
-def insert_embedding(speaker_id: int, embedding: list[float]):
+def insert_embedding(speaker_id: str, embedding: list[float]):
     collection = init_milvus()
+
+    # Delete existing if present (Upsert behavior)
+    try:
+        collection.delete(f"speaker_id == '{speaker_id}'")
+    except Exception as e:
+        print(f"Warning during delete: {e}")
 
     collection.insert([
         {
@@ -96,20 +103,35 @@ def insert_embedding(speaker_id: int, embedding: list[float]):
     collection.flush()
 
 
-def search_embedding(embedding: list[float], top_k: int = 1):
+def search_embedding(embedding: list[float], top_k: int = 1, speaker_id: str = None):
     collection = init_milvus()
 
     # 🔴 REQUIRED for fresh inserts
     collection.load()
 
-    return collection.search(
-        data=[embedding],
-        anns_field="embedding",
-        param={
-            "metric_type": "COSINE",
-            "params": {"nprobe": 10}
-        },
-        limit=top_k,
-        consistency_level="Strong",   # 🔥 THIS FIXES IT
-        output_fields=["speaker_id"]
-    )
+    search_params = {
+        "metric_type": "COSINE",
+        "params": {"nprobe": 10},
+    }
+
+    expr = None
+    if speaker_id is not None:
+        expr = f"speaker_id == '{speaker_id}'"
+
+    try:
+        results = collection.search(
+            data=[embedding],
+            anns_field="embedding",
+            param=search_params,
+            limit=top_k,
+            expr=expr,
+            consistency_level="Strong",
+        )
+    except Exception as e:
+        print(f"ERROR: Milvus Search Failed: {e}")
+        raise e
+
+    if not results or not results[0]:
+        return []
+
+    return results[0]

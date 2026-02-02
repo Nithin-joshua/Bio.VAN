@@ -37,3 +37,9 @@ export const PHONETIC_PARAGRAPHS = [
         label: "Phonetic Balance 3"
     }
 ];
+
+export const VERIFICATION_PARAGRAPH = {
+    id: 'verify_sample',
+    text: "Access control initiated. The birch canoe slid on the smooth planks. Glue the sheet to the dark blue background. It is easy to tell the depth of a well. Secure channel open.",
+    label: "Verification Protocol"
+};

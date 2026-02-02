@@ -22,13 +22,17 @@ const DEMO_USER_ID = '1';
  * @returns {string} result.user_id - ID of the matched user
  * @throws {Error} If verification request fails
  */
-export const authenticateVoiceSample = async (audioBlob) => {
+export const authenticateVoiceSample = async (audioBlob, userId) => {
   const formData = new FormData();
   formData.append('file', audioBlob);
 
   try {
     // Send voice sample to backend for comparison
-    const response = await fetch(`${BASE_URL}/verify?speaker_id=${DEMO_USER_ID}`, {
+    const url = userId 
+      ? `${BASE_URL}/verify?speaker_id=${encodeURIComponent(userId)}`
+      : `${BASE_URL}/verify`;
+
+    const response = await fetch(url, {
       method: 'POST',
       body: formData,
     });
