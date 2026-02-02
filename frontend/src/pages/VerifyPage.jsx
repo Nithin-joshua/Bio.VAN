@@ -163,7 +163,7 @@ const VerifyPage = () => {
   };
 
   return (
-    <div className="page-container" style={{ position: 'relative', height: '100vh', overflow: 'hidden' }}>
+    <div className="page-container" style={{ position: 'relative', minHeight: '100vh', overflowY: 'auto', overflowX: 'hidden' }}>
       <SystemStatus />
 
       {/* RESULT MODAL OVERLAY */}
@@ -175,13 +175,13 @@ const VerifyPage = () => {
       )}
 
       {/* CENTERED MUSIC PLAYER CARD */}
-      <div style={{
+      <div className="verify-content-wrapper" style={{
         display: 'flex',
         justifyContent: 'center',
         alignItems: 'center',
-        height: '100%',
+        minHeight: 'calc(100vh - 60px)',
         width: '100%',
-        padding: '1rem',
+        padding: '1.5rem',
         zIndex: 1
       }}>
         <div className="cyber-player-card">

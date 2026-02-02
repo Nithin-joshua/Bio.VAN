@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import Button from '../components/core/Button';
-import '../styles/cyber-player.css';
+import Button from '../core/Button';
+import "../../styles/cyber-player.css";
 
 const VerificationResultModal = ({ result, onClose }) => {
     const [isVisible, setIsVisible] = useState(false);
