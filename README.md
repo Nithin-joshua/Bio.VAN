@@ -75,7 +75,7 @@ npm run dev
 ## 🖥️ System Access
 
 | Component | URL | Description |
-|-----------|-----|-------------|
+| ----------- | ----- | ------------- |
 | **Bio.VAN UI** | `http://localhost:5173` | Main User Interface |
 | **API Docs** | `http://localhost:8000/docs` | Swagger UI for Backend API |
 | **Attu (Milvus)** | `http://localhost:8001` | Visual Manager for Vector DB |
