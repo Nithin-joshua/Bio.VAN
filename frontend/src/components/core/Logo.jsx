@@ -16,11 +16,15 @@ const Logo = ({ size = 'large', style = {} }) => {
         <HolographicHero />
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center' }}>
-        <span className="logo-text">BIO</span>
-        <span className="logo-cursor">█</span>
-        <span className="logo-glitch" data-text="V">V</span>
-      </div>
+        <div style={{ display: 'flex', alignItems: 'center' }}>
+          <span className="logo-text">
+            <span className="logo-b">B</span>
+            <span className="logo-i">I</span>
+            <span className="logo-o">O</span>
+          </span>
+          <span className="logo-cursor">█</span>
+          <span className="logo-glitch" data-text="V">V</span>
+        </div>
     </div>
   );
 };

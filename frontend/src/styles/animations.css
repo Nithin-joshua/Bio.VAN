@@ -217,8 +217,41 @@
 
 /* The "BIO" part */
 .logo-text {
+  display: flex;
+  gap: 2px;
+}
+
+.logo-b {
   color: var(--neon-blue);
-  text-shadow: 0 0 10px var(--neon-blue);
+  text-shadow: 0 0 15px var(--neon-blue);
+  animation: logo-pulse-blue 3s ease-in-out infinite;
+}
+
+.logo-i {
+  color: var(--neon-purple);
+  text-shadow: 0 0 15px var(--neon-purple);
+  animation: logo-pulse-purple 3s ease-in-out infinite 1s;
+}
+
+.logo-o {
+  color: var(--neon-green);
+  text-shadow: 0 0 15px var(--neon-green);
+  animation: logo-pulse-green 3s ease-in-out infinite 2s;
+}
+
+@keyframes logo-pulse-blue {
+  0%, 100% { text-shadow: 0 0 10px var(--neon-blue); filter: brightness(1); }
+  50% { text-shadow: 0 0 25px var(--neon-blue); filter: brightness(1.3); }
+}
+
+@keyframes logo-pulse-purple {
+  0%, 100% { text-shadow: 0 0 10px var(--neon-purple); filter: brightness(1); }
+  50% { text-shadow: 0 0 25px var(--neon-purple); filter: brightness(1.3); }
+}
+
+@keyframes logo-pulse-green {
+  0%, 100% { text-shadow: 0 0 10px var(--neon-green); filter: brightness(1); }
+  50% { text-shadow: 0 0 25px var(--neon-green); filter: brightness(1.3); }
 }
 
 /* The Blinking Block Cursor */
