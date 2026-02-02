@@ -6,10 +6,16 @@ import Logo from '../components/core/Logo';
 import Select from '../components/core/Select';
 import Card from '../components/ui/Card';
 import SystemStatus from '../components/ui/SystemStatus';
-import VoiceRecorder from '../components/biometric/VoiceRecorder';
 import { PHONETIC_PARAGRAPHS } from '../data/phonetics';
 import { registerUserVoiceprint } from '../api/enroll.api';
 import '../styles/components.css';
+import '../styles/cyber-player.css';
+
+// Audio Hooks & Components
+import { useRecorder } from '../audio/useRecorder';
+import { useWaveformAnalyzer } from '../audio/useWaveformAnalyzer';
+import Waveform from '../components/signal/Waveform';
+import PulseRing from '../components/signal/PulseRing';
 
 class ErrorBoundary extends Component {
   constructor(props) {
@@ -42,11 +48,6 @@ class ErrorBoundary extends Component {
 /**
  * User Enrollment Page
  * Multi-step form for registering new users with voice biometrics.
- * 
- * Flow:
- * Step 0: Collect user details (name, email, role)
- * Steps 1-3: Record 3 phonetically balanced voice samples
- * Step 4: Success confirmation
  */
 const EnrollPage = () => {
   const { showToast } = useToast();
@@ -56,74 +57,73 @@ const EnrollPage = () => {
   const [isSubmittingToServer, setIsSubmittingToServer] = useState(false);
   const [generatedUserId, setGeneratedUserId] = useState(null);
 
+  // Audio Hooks
+  const { isRecording, stream, startRecording, stopRecording } = useRecorder();
+  const audioData = useWaveformAnalyzer(stream);
+
   // User enrollment data collected across all steps
   const [enrollmentData, setEnrollmentData] = useState({
     fullName: '',
     email: '',
-    // password: '', // Removed
     role: 'personnel',
     recordings: {}  // Will store 3 voice sample blobs keyed by sample_1, sample_2, sample_3
   });
 
   /**
+   * Toggles recording state for enrollment
+   */
+  const toggleRecording = async (sampleId) => {
+    if (isRecording) {
+      // Stop recording
+      const audioBlob = await stopRecording();
+      if (audioBlob) {
+        saveVoiceSample(audioBlob, sampleId);
+        showToast("Sample captured. Review or Proceed.", "success");
+      }
+    } else {
+      // Start recording
+      startRecording();
+    }
+  };
+
+  /**
    * Advances to the next step in the enrollment process.
-   * On the final voice sample step (step 3), submits all data to the server.
    */
   const proceedToNextStep = async () => {
     if (currentStep === 3) {
-      // Final step: Submit all collected data to backend
-      
-      // Safety Check: Ensure all required data is present
-      // This handles cases where user might have been mid-enrollment during code updates
+      // Final step: Submit all collected data
       if (!enrollmentData.fullName || !enrollmentData.email) {
-        showToast("Security Protocol Error: Missing Credentials. Returning to Phase 1.", "error");
+        showToast("Security Protocol Error: Missing Credentials.", "error");
         setCurrentStep(0);
         return;
       }
 
-      // Verify all voice samples are recorded
       const missingSamples = PHONETIC_PARAGRAPHS.filter(p => !enrollmentData.recordings[p.id]);
       if (missingSamples.length > 0) {
-        showToast(`Voice Calibration Incomplete. Missing: ${missingSamples.map(s => s.label).join(', ')}`, "error");
-        // Go back to the first missing sample
-        const firstMissingIndex = PHONETIC_PARAGRAPHS.findIndex(p => !enrollmentData.recordings[p.id]);
-        if (firstMissingIndex !== -1) {
-             // Step 0 is info, Step 1 is Sample 1 (index 0)
-             setCurrentStep(firstMissingIndex + 1);
-        }
+        showToast(`Missing Samples: ${missingSamples.map(s => s.label).join(', ')}`, "error");
         return;
       }
 
       setIsSubmittingToServer(true);
       try {
         const response = await registerUserVoiceprint(enrollmentData);
-        // Ensure user_id is set before moving to next step
         if (response && response.user_id) {
           setGeneratedUserId(response.user_id);
         }
         showToast('Registration Successful. Identity Encoded.', 'success');
         setCurrentStep(prev => prev + 1);
       } catch (error) {
-        showToast(error.message || 'Registration failed. Please try again.', 'error');
+        showToast(error.message || 'Registration failed.', 'error');
       } finally {
         setIsSubmittingToServer(false);
       }
     } else {
-      // Move to next step
       setCurrentStep(prev => prev + 1);
     }
   };
 
-  /**
-   * Returns to the previous step in the enrollment process.
-   * Allows users to correct information or re-record samples.
-   */
   const returnToPreviousStep = () => setCurrentStep(prev => prev - 1);
 
-  /**
-   * Saves a recorded voice sample to the enrollment data.
-   * Called when user completes recording for a specific sample.
-   */
   const saveVoiceSample = (audioBlob, sampleId) => {
     setEnrollmentData(previousData => ({
       ...previousData,
@@ -161,8 +161,6 @@ const EnrollPage = () => {
                   placeholder="user@network.com"
                 />
               </div>
-              
-              {/* Password field removed as per directive */}
 
               <div className="cyber-input-group">
                 <label className="cyber-label">CLEARANCE LEVEL</label>
@@ -177,7 +175,6 @@ const EnrollPage = () => {
                   placeholder="SELECT CLEARANCE"
                 />
               </div>
-              {/* Only enable proceed button if form is valid */}
               <Button
                 onClick={proceedToNextStep}
                 disabled={!enrollmentData.fullName || !enrollmentData.email || !enrollmentData.email.includes('@')}
@@ -191,50 +188,93 @@ const EnrollPage = () => {
       case 1:
       case 2:
       case 3:
-        // Steps 2-4: Record voice samples
-        // Each step records one of three phonetically balanced paragraphs
+        // Steps 2-4: Record voice samples using Music Player Layout
         const sampleIndex = currentStep - 1;
         const currentSample = PHONETIC_PARAGRAPHS[sampleIndex];
         const isLastSample = currentStep === 3;
+        const hasRecording = !!enrollmentData.recordings[currentSample.id];
 
         return (
-          <Card title={`VOICE SAMPLE ${currentStep}/3`} status="RECORDING" delay={0.1}>
-            <div style={{ padding: '1rem', maxWidth: '500px', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: '1.6' }}>
-                Verbalize the following data packet clearly:
-              </p>
-              {/* Display the phonetic paragraph for user to read */}
-              <div style={{
-                padding: '1rem',
-                background: 'rgba(0, 243, 255, 0.05)',
-                borderLeft: '2px solid var(--primary-color)',
-                color: 'white',
-                fontSize: '1.1rem',
-                fontFamily: 'var(--font-header)',
-                letterSpacing: '0.5px'
-              }}>
-                "{currentSample.text}"
-              </div>
-
-              {/* Voice recorder component handles recording UI */}
-              <VoiceRecorder
-                key={currentSample.id}
-                label={currentSample.label}
-                onRecordingComplete={(blob) => saveVoiceSample(blob, currentSample.id)}
-              />
-
-              {/* Navigation buttons */}
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '1rem' }}>
-                <Button variant="secondary" onClick={returnToPreviousStep} disabled={isSubmittingToServer}>REGRESS</Button>
-                <Button 
-                  onClick={proceedToNextStep} 
-                  disabled={!enrollmentData.recordings[currentSample.id] || isSubmittingToServer}
-                >
-                  {isSubmittingToServer ? "UPLOADING BIOMETRICS..." : (isLastSample ? "FINALIZE REGISTRATION" : "NEXT SAMPLE")}
-                </Button>
+          <div className="cyber-player-card">
+            {/* Header */}
+            <div className="player-header">
+              <div className="player-header-text">
+                VOICE CALIBRATION // SAMPLE {currentStep}/3
               </div>
             </div>
-          </Card>
+
+            {/* Visualizer */}
+            <div className="visualizer-display">
+              <div className="visualizer-content">
+                <div style={{ width: '100%', height: '100%', opacity: 0.6 }}>
+                  <Waveform audioData={audioData} isActive={isRecording} />
+                </div>
+                <div style={{ position: 'absolute' }}>
+                  <PulseRing isActive={isRecording} />
+                </div>
+              </div>
+            </div>
+
+            {/* Track Info */}
+            <div className="player-track-info">
+              <div className="track-title-row">
+                <div style={{ flex: 1 }}>
+                  <div className="track-title-label">
+                    Encoding Profile
+                  </div>
+                  <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', fontFamily: 'var(--font-mono)' }}>
+                    {enrollmentData.fullName || "UNKNOWN SUBJECT"}
+                  </div>
+                </div>
+                <div style={{ paddingBottom: '2px' }}>
+                  <div className={`status-dot ${hasRecording ? 'active' : (isRecording ? 'recording' : '')}`} />
+                </div>
+              </div>
+
+              <div className="player-lyrics">
+                <div className="player-lyrics-text">
+                  "{currentSample.text}"
+                </div>
+              </div>
+            </div>
+
+            {/* Controls */}
+            <div className="player-controls-area">
+              <div className="player-progress-bar">
+                <div className="player-progress-fill" style={{ width: isRecording ? '100%' : '0%', transitionDuration: '10s' }} />
+              </div>
+
+              <div className="player-buttons">
+                {/* Previous Step */}
+                <button onClick={returnToPreviousStep} className="player-btn-small" title="Back">
+                  <span style={{ transform: 'scaleX(-1)', display: 'inline-block' }}>➜</span>
+                </button>
+
+                {/* Record / Stop */}
+                <div
+                  className={`player-btn-main ${isRecording ? 'recording' : ''}`}
+                  onClick={() => toggleRecording(currentSample.id)}
+                >
+                  {isRecording ? <div className="icon-stop" /> : <div className="icon-play" />}
+                </div>
+
+                {/* Next Step */}
+                <button
+                  onClick={proceedToNextStep}
+                  className="player-btn-small"
+                  disabled={!hasRecording || isSubmittingToServer}
+                  style={{ opacity: (!hasRecording || isSubmittingToServer) ? 0.5 : 1, cursor: (!hasRecording || isSubmittingToServer) ? 'not-allowed' : 'pointer' }}
+                  title="Next Sample"
+                >
+                  <span>➜</span>
+                </button>
+              </div>
+
+              <div style={{ textAlign: 'center', marginTop: '1rem', color: 'var(--text-secondary)', fontSize: '0.7rem', fontFamily: 'var(--font-mono)' }}>
+                {isRecording ? "RECORDING IN PROGRESS..." : (hasRecording ? "SAMPLE BUFFERED. PROCEED >>" : "AWAITING INPUT")}
+              </div>
+            </div>
+          </div>
         );
       case 4:
         // Step 5: Success confirmation
@@ -268,14 +308,16 @@ const EnrollPage = () => {
       <div className="page-container" style={{ justifyContent: 'center', alignItems: 'center' }}>
         <SystemStatus />
         {/* Page header with logo and title */}
-        <div style={{ marginBottom: '2rem', textAlign: 'center' }}>
-          <Logo size="medium" style={{ justifyContent: 'center' }} />
-          <h2 style={{ fontFamily: 'var(--font-header)', color: 'var(--text-secondary)', letterSpacing: '4px', fontSize: '1rem', marginTop: '1rem' }}>
-            NEW USER ENROLLMENT PROTOCOL
-          </h2>
-        </div>
+        {currentStep === 0 && (
+          <div style={{ marginBottom: '2rem', textAlign: 'center' }}>
+            <Logo size="medium" style={{ justifyContent: 'center' }} />
+            <h2 style={{ fontFamily: 'var(--font-header)', color: 'var(--text-secondary)', letterSpacing: '4px', fontSize: '1rem', marginTop: '1rem' }}>
+              NEW USER ENROLLMENT PROTOCOL
+            </h2>
+          </div>
+        )}
 
-        {/* Render current step content (form, voice recorder, or success message) */}
+        {/* Render current step content */}
         {renderProtocolInterface()}
 
         {/* Footer with version info */}

@@ -25,7 +25,7 @@ export const registerUserVoiceprint = async (enrollmentData) => {
     // Add user profile information
     formData.append('full_name', enrollmentData.fullName);
     formData.append('email', enrollmentData.email);
-    // formData.append('password', enrollmentData.password); // Removed
+    // Password removed as per user directive
     formData.append('role', enrollmentData.role);
 
     // Attach voice recordings as audio files
@@ -48,9 +48,9 @@ export const registerUserVoiceprint = async (enrollmentData) => {
         if (!response.ok) {
             // Try to extract error details from server response
             const serverErrorDetails = await response.json().catch(() => ({}));
-            
+
             let errorMessage = `Server Error: ${response.statusText}`;
-            
+
             if (serverErrorDetails.detail) {
                 if (Array.isArray(serverErrorDetails.detail)) {
                     // Handle FastAPI validation errors (array of objects)
@@ -62,7 +62,7 @@ export const registerUserVoiceprint = async (enrollmentData) => {
                     errorMessage = serverErrorDetails.detail;
                 }
             }
-            
+
             throw new Error(errorMessage);
         }
 

@@ -3,6 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from typing import Optional, List
 import tempfile
 import os
+import random
+import string
 import numpy as np
 import librosa
 
@@ -73,7 +75,7 @@ async def enroll(
     full_name: str = Form(...),
     email: str = Form(...),
     role: str = Form(...),
-    # password: str = Form(...), # Removed
+    # password: str = Form(...), # Removed by user request
     sample_1: UploadFile = File(...),
     sample_2: UploadFile = File(...),
     sample_3: UploadFile = File(...),
@@ -86,35 +88,25 @@ async def enroll(
         # "Alice" -> "ali$ice"
         
         # 1. Clean name (keep only letters)
-        clean_name = re.sub(r'[^a-zA-Z\s]', '', full_name.lower())
-        parts = clean_name.split()
+        clean_name = re.sub(r'[^a-zA-Z]', '', full_name)
         
-        if not parts:
-            # Fallback for empty/symbol-only names
-            import random
-            import string
-            prefix = ''.join(random.choices(string.ascii_lowercase, k=3))
-            suffix = ''.join(random.choices(string.ascii_lowercase, k=3))
-            speaker_id = f"{prefix}${suffix}"
-        elif len(parts) == 1:
-            # Single name: "Alice" -> "ali$ice" (first 3, last 3)
-            name = parts[0]
-            if len(name) < 3:
-                speaker_id = f"{name}${name}"
-            else:
-                speaker_id = f"{name[:3]}${name[-3:]}"
-        else:
-            # Multiple names: "John Doe" -> "joh$doe"
-            first = parts[0]
-            last = parts[-1]
-            # Ensure at least some chars
-            p1 = first[:3] if len(first) >= 3 else first
-            p2 = last[:3] if len(last) >= 3 else last
-            speaker_id = f"{p1}${p2}"
+        # Ensure we have enough letters, else pad with random
+        if not clean_name:
+             # Fallback if name has no letters
+             clean_name = string.ascii_letters 
+        
+        # First 3 digits: Random letters from user's name (alphabets only)
+        # Using choices() handles names shorter than 3 chars by repeating
+        prefix = ''.join(random.choices(clean_name, k=3))
+        
+        # Remaining 7 digits: Random alphanumeric
+        suffix_chars = string.ascii_letters + string.digits
+        suffix = ''.join(random.choices(suffix_chars, k=7))
+        
+        speaker_id = prefix + suffix
         
         # hashed_pw = get_password_hash(password)
         user = create_user(full_name, email, role, user_id=speaker_id, hashed_password=None)
-        # speaker_id is now string
     except Exception as e:
         print(f"DEBUG: Database Error in enroll: {e}")
         raise HTTPException(status_code=500, detail=f"Database Error: {str(e)}")

@@ -20,7 +20,8 @@
 
   /* TEXT */
   --text-primary: #e0faff;
-  --text-secondary: #5e7a8a;
+  --text-secondary: #8daac0;
+  /* Lightened for better contrast */
   --text-muted: #3a4b55;
 
   /* FONTS */

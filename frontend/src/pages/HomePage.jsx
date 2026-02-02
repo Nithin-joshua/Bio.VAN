@@ -10,16 +10,17 @@ const HomePage = () => {
   return (
     <div className="page-container home-page">
       <SystemStatus />
-      
+
       <div className="hero-section">
         <div className="hero-bg-effect" />
+        <div className="cyber-grid-overlay" />
 
         <div className="hero-header">
           <Logo size="large" />
         </div>
 
         <div className="hero-content">
-          <p className="hero-subtitle">
+          <p className="hero-subtitle text-glitch" data-text="IDENTITY IS VOICE">
             IDENTITY IS VOICE
           </p>
 

@@ -17,6 +17,7 @@ import Logo from '../components/core/Logo';
 import Terminal from '../components/ui/Terminal';
 import SystemStatus from '../components/ui/SystemStatus';
 import '../styles/components.css';
+import '../styles/cyber-player.css';
 
 /**
  * Voice Verification Page
@@ -29,6 +30,16 @@ const VerifyPage = () => {
   const [similarityScore, setSimilarityScore] = useState(0);
   const [terminalLogs, setTerminalLogs] = useState([]);
   const [targetUserId, setTargetUserId] = useState('');
+  const [showWarning, setShowWarning] = useState(false);
+  const [showResultModal, setShowResultModal] = useState(false);
+  const [resultDetails, setResultDetails] = useState(null);
+  const [accessLogs, setAccessLogs] = useState([
+    { id: 'User-8842', time: '10:42:12', status: 'DENIED' },
+    { id: 'User-9921', time: '10:41:05', status: 'GRANTED' },
+    { id: 'User-1102', time: '10:38:55', status: 'GRANTED' },
+    { id: 'User-3321', time: '10:35:12', status: 'GRANTED' },
+    { id: 'User-0000', time: '10:30:22', status: 'DENIED' },
+  ]);
 
   const { isRecording, stream, startRecording, stopRecording } = useRecorder();
   const audioData = useWaveformAnalyzer(stream);
@@ -79,34 +90,59 @@ const VerifyPage = () => {
   const { showToast } = useToast();
 
   /**
+   * Helper delay function for cinematic effect
+   */
+  const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+  /**
    * Sends voice sample to backend for authentication.
    * Handles three possible outcomes: verified, rejected, or spoof detected.
    */
   const executeAuthenticationProtocol = async (audioBlob) => {
-    appendTerminalLog('HANDSHAKE INITIATED...');
-    appendTerminalLog('TRANSMITTING TO CORE...');
-
     try {
-      // Use targetUserId if provided for 1:1 verification
-      const authenticationResult = await authenticateVoiceSample(audioBlob, targetUserId);
-      setSimilarityScore(authenticationResult.similarity_score);
+      // Cinematic processing sequence
+      appendTerminalLog('INITIATING HANDSHAKE...');
+      await delay(400); // Simulate network
 
-      if (authenticationResult.spoof) {
-        // Spoofing attack detected (replay attack, synthetic voice, etc.)
+      appendTerminalLog('ENCRYPTING PACKET LOAD...');
+      await delay(400);
+
+      appendTerminalLog('TRANSMITTING TO BIO-CORE...');
+
+      // Actual API Call
+      const result = await authenticateVoiceSample(audioBlob, targetUserId);
+
+      // Simulate analysis steps
+      appendTerminalLog('DATA RECEIVED. DECRYPTING...');
+      await delay(400);
+
+      appendTerminalLog('EXTRACTING MFCC FEATURES...');
+      await delay(500);
+
+      appendTerminalLog('ANALYZING SPECTRAL FLUX...');
+      await delay(400);
+
+      appendTerminalLog('COMPARING AGAINST NEURAL VECTORS...');
+      await delay(600);
+
+      setSimilarityScore(result.similarity_score);
+      setResultDetails(result);
+
+      if (result.spoof) {
         appendTerminalLog('!!! SECURITY VIOLATION: SYNTHETIC SIGNATURE !!!');
         setVerificationStatus('spoof');
-        showToast('Artificial signature detected. Countermeasures engaged.', 'error');
-      } else if (authenticationResult.verified) {
-        // Voice matches stored voiceprint
-        appendTerminalLog(`IDENTITY VERIFIED. CONFIDENCE: ${(authenticationResult.similarity_score * 100).toFixed(2)}%`);
+        showToast('Artificial signature detected.', 'error');
+      } else if (result.verified) {
+        appendTerminalLog(`IDENTITY VERIFIED. CONFIDENCE: ${(result.similarity_score * 100).toFixed(2)}%`);
         setVerificationStatus('verified');
-        showToast(`Access Granted. Welcome, Operator #${authenticationResult.user_id || 'UNKNOWN'}.`, 'success');
       } else {
-        // Voice doesn't match (similarity score too low)
-        appendTerminalLog(`ACCESS DENIED. CONFIDENCE: ${(authenticationResult.similarity_score * 100).toFixed(2)}%`);
+        appendTerminalLog(`ACCESS DENIED. CONFIDENCE: ${(result.similarity_score * 100).toFixed(2)}%`);
         setVerificationStatus('rejected');
-        showToast('Identity mismatch. Access denied.', 'error');
       }
+
+      // Show result modal after a brief moment
+      setTimeout(() => setShowResultModal(true), 500);
+
     } catch (error) {
       appendTerminalLog(`FATAL ERROR: ${error.message}`);
       setVerificationStatus('rejected');
@@ -119,6 +155,8 @@ const VerifyPage = () => {
    * Allows user to try authentication again.
    */
   const resetSystemState = () => {
+    setShowResultModal(false);
+    setResultDetails(null);
     appendTerminalLog('PURGING CACHE...');
     setVerificationStatus('idle');
     setSimilarityScore(0);
@@ -126,99 +164,224 @@ const VerifyPage = () => {
   };
 
   return (
-    <div className="page-container">
+    <div className="page-container" style={{ position: 'relative', height: '100vh', overflow: 'hidden' }}>
       <SystemStatus />
-      
-      <div className="verify-layout">
-        {/* LEFT PANEL: Waveform visualization and controls */}
-        <div className="main-panel">
-          <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--text-secondary)', paddingBottom: '1rem' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-              <Logo size="small" />
-              <span style={{ fontFamily: 'var(--font-header)', color: 'var(--text-secondary)' }}>&gt; PROTOCOL: AUTH_VERIFY</span>
-            </div>
-            <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--neon-blue)' }}>SECURE_CHANNEL_01</span>
-          </header>
 
-          {/* Visualization area with overlapping status indicators */}
-          <div className="visualization-area" style={{ flex: 1, minHeight: '400px', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', position: 'relative', border: 'var(--glass-border)', background: 'var(--glass-bg)', borderRadius: '12px' }}>
-            <PulseRing isActive={verificationStatus === 'recording'} />
-            <Loader active={verificationStatus === 'processing'} />
-            <Waveform audioData={audioData} isActive={verificationStatus === 'recording'} />
-            <VerificationStatus status={verificationStatus} />
-          </div>
-
-          {/* Verification Paragraph Display */}
+      {/* RESULT MODAL OVERLAY */}
+      {showResultModal && resultDetails && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100vw',
+          height: '100vh',
+          background: 'rgba(0, 0, 0, 0.85)',
+          zIndex: 1000,
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          backdropFilter: 'blur(5px)'
+        }}>
           <div style={{
-            margin: '1rem auto',
-            padding: '1rem',
-            background: 'rgba(0, 243, 255, 0.05)',
-            borderLeft: '2px solid var(--primary-color)',
-            color: 'white',
+            background: 'rgba(10, 20, 30, 0.95)',
+            border: `2px solid ${resultDetails.verified ? 'var(--neon-green)' : (resultDetails.spoof ? 'var(--neon-red)' : 'var(--neon-red)')}`,
+            padding: '2rem',
+            maxWidth: '500px',
+            width: '90%',
+            borderRadius: '8px',
+            boxShadow: `0 0 30px ${resultDetails.verified ? 'rgba(0, 255, 0, 0.2)' : 'rgba(255, 0, 0, 0.2)'}`,
             textAlign: 'center',
-            fontFamily: 'var(--font-header)',
-            letterSpacing: '0.5px',
-            maxWidth: '80%',
-            fontSize: '1.1rem',
-            lineHeight: '1.5'
+            position: 'relative'
           }}>
-            "{VERIFICATION_PARAGRAPH.text}"
-          </div>
+            {/* Decorative Corner Markers */}
+            <div style={{ position: 'absolute', top: '-2px', left: '-2px', width: '20px', height: '20px', borderTop: `4px solid ${resultDetails.verified ? 'var(--neon-green)' : 'var(--neon-red)'}`, borderLeft: `4px solid ${resultDetails.verified ? 'var(--neon-green)' : 'var(--neon-red)'}` }} />
+            <div style={{ position: 'absolute', bottom: '-2px', right: '-2px', width: '20px', height: '20px', borderBottom: `4px solid ${resultDetails.verified ? 'var(--neon-green)' : 'var(--neon-red)'}`, borderRight: `4px solid ${resultDetails.verified ? 'var(--neon-green)' : 'var(--neon-red)'}` }} />
 
-          {/* Control buttons area */}
-          <div className="controls-area" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '1rem' }}>
-            
-            {/* Target ID Input for 1:1 Verification */}
-            <div style={{ width: '100%', maxWidth: '300px', marginBottom: '0.5rem' }}>
-              <label style={{ 
-                display: 'block', 
-                color: 'var(--text-secondary)', 
-                marginBottom: '0.5rem', 
-                fontSize: '0.8rem', 
-                letterSpacing: '1px' 
-              }}>
-                TARGET IDENTITY (OPTIONAL)
-              </label>
-              <input
-                type="text"
-                value={targetUserId}
-                onChange={(e) => setTargetUserId(e.target.value)}
-                placeholder="ENTER OPERATOR ID"
-                disabled={verificationStatus === 'processing' || verificationStatus === 'recording'}
-                style={{
-                  width: '100%',
-                  padding: '0.8rem',
-                  background: 'rgba(0, 20, 40, 0.5)',
-                  border: '1px solid var(--primary-color)',
-                  color: 'white',
-                  borderRadius: '4px',
-                  fontFamily: 'var(--font-mono)',
-                  fontSize: '1rem',
-                  textAlign: 'center',
-                  outline: 'none',
-                  boxShadow: '0 0 10px rgba(0, 243, 255, 0.1)'
-                }}
-              />
+            <h2 style={{
+              color: resultDetails.verified ? 'var(--neon-green)' : 'var(--neon-red)',
+              fontFamily: 'var(--font-header)',
+              fontSize: '2rem',
+              marginBottom: '0.5rem',
+              textShadow: '0 0 10px currentColor'
+            }}>
+              {resultDetails.verified ? 'ACCESS GRANTED' : (resultDetails.spoof ? 'SECURITY ALERT' : 'ACCESS DENIED')}
+            </h2>
+
+            <div style={{ width: '100%', height: '1px', background: 'var(--text-secondary)', margin: '1.5rem 0' }} />
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', textAlign: 'left', fontFamily: 'var(--font-mono)' }}>
+              <div style={{ color: 'var(--text-secondary)' }}>TARGET ID:</div>
+              <div style={{ color: 'white', textAlign: 'right' }}>{targetUserId || 'UNKNOWN'}</div>
+
+              <div style={{ color: 'var(--text-secondary)' }}>CONFIDENCE:</div>
+              <div style={{ color: resultDetails.verified ? 'var(--neon-green)' : 'var(--neon-red)', textAlign: 'right' }}>
+                {(resultDetails.similarity_score * 100).toFixed(2)}%
+              </div>
+
+              <div style={{ color: 'var(--text-secondary)' }}>LIVELINESS:</div>
+              <div style={{ color: resultDetails.spoof ? 'var(--neon-red)' : 'var(--neon-green)', textAlign: 'right' }}>
+                {resultDetails.spoof ? 'FAILED (SPOOF)' : 'CONFIRMED'}
+              </div>
+
+              <div style={{ color: 'var(--text-secondary)' }}>TIMESTAMP:</div>
+              <div style={{ color: 'white', textAlign: 'right' }}>{new Date().toLocaleTimeString()}</div>
             </div>
 
-            <StatusMessage status={verificationStatus} similarity={similarityScore} />
-
-            {/* Show reset button after verification completes, otherwise show mic control */}
-            {verificationStatus === 'verified' || verificationStatus === 'rejected' || verificationStatus === 'spoof' ? (
-              <Button onClick={resetSystemState}>RESET SYSTEM</Button>
-            ) : (
-              <MicControl
-                isRecording={isRecording}
-                onToggle={toggleAudioCapture}
-                disabled={verificationStatus === 'processing'}
-              />
-            )}
+            <Button
+              onClick={resetSystemState}
+              style={{ marginTop: '2rem', width: '100%', fontSize: '1.1rem' }}
+              variant={resultDetails.verified ? 'primary' : 'danger'}
+            >
+              CLOSE REPORT
+            </Button>
           </div>
         </div>
+      )}
 
-        {/* RIGHT PANEL: Terminal logs for debugging/transparency */}
-        <div className="side-panel">
-          <Terminal logs={terminalLogs} />
+
+
+
+
+      {/* CENTERED MUSIC PLAYER CARD */}
+      <div style={{
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        height: '100%',
+        width: '100%',
+        padding: '1rem',
+        zIndex: 1
+      }}>
+        <div className="cyber-player-card">
+
+          {/* 1. TOP HEADER ("Playlist" Name) */}
+          <div className="player-header">
+            <div className="player-header-text">
+              SECURE CHANNEL_01
+            </div>
+          </div>
+
+          {/* 2. "ALBUM ART" - VISUALIZER / TERMINAL HYBRID */}
+          <div className="visualizer-display">
+            {/* STATE A: PROCESSING TERMINAL */}
+            {(verificationStatus === 'processing' || verificationStatus === 'verified' || verificationStatus === 'rejected' || verificationStatus === 'spoof') ? (
+              <div className="player-terminal">
+                <div className="player-terminal-header">
+                  &gt;_ SYSTEM_LOG
+                </div>
+                {terminalLogs.map((log, index) => (
+                  <div key={index} className="player-terminal-log">
+                    <span style={{ color: 'var(--text-secondary)', marginRight: '0.5rem' }}>[{log.timestamp.split(' ')[0]}]</span>
+                    {log.message}
+                  </div>
+                ))}
+                {/* Blink cursor at the end */}
+                <div style={{ animation: 'blink-opacity 1s infinite', color: 'var(--neon-blue)', marginTop: '0.5rem' }}>_</div>
+              </div>
+            ) : (
+              /* STATE B: VISUALIZER (Idle/Recording) */
+              <div className="visualizer-content">
+                {/* Visualizers */}
+                <div style={{ width: '100%', height: '100%', opacity: 0.6 }}>
+                  <Waveform audioData={audioData} isActive={verificationStatus === 'recording'} />
+                </div>
+                <div style={{ position: 'absolute' }}>
+                  <PulseRing isActive={verificationStatus === 'recording'} />
+                  {showWarning && (
+                    <div style={{
+                      position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+                      color: 'var(--neon-red)', fontWeight: 'bold', fontSize: '1rem', whiteSpace: 'nowrap',
+                      background: 'rgba(0,0,0,0.95)', padding: '8px 16px', border: '1px solid var(--neon-red)', borderRadius: '4px',
+                      zIndex: 20, boxShadow: '0 0 20px rgba(255,0,0,0.3)'
+                    }}> INVALID TARGET ID </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* 3. TRACK INFO - ID Input & Protocol Header */}
+          <div className="player-track-info">
+            <div className="track-title-row">
+              {/* Title / ID Input Area */}
+              <div style={{ flex: 1 }}>
+                <div className="track-title-label">
+                  Target Identification
+                </div>
+                <div className="track-input-wrapper">
+                  <input
+                    type="text"
+                    value={targetUserId}
+                    onChange={(e) => setTargetUserId(e.target.value)}
+                    placeholder="ENTER ID..."
+                    maxLength={10}
+                    className="track-input"
+                  />
+                  {targetUserId.length === 10 && <span style={{ color: 'var(--neon-green)', marginLeft: '0.5rem' }}>✓</span>}
+                </div>
+              </div>
+
+              {/* Status Dot */}
+              <div style={{ paddingBottom: '2px' }}>
+                <div className={`status-dot ${verificationStatus === 'verified' ? 'active' : (verificationStatus === 'recording' ? 'recording' : '')}`} />
+              </div>
+            </div>
+
+            {/* Protocol Text */}
+            <div className="player-lyrics">
+              <div className="player-lyrics-text">
+                "{VERIFICATION_PARAGRAPH.text}"
+              </div>
+            </div>
+
+          </div>
+
+          {/* 4. CONTROLS (Play Bar & Buttons) */}
+          <div className="player-controls-area">
+            {/* Fake Progress Bar */}
+            <div className="player-progress-bar">
+              <div className="player-progress-fill" style={{ width: verificationStatus === 'recording' ? '100%' : '0%', transitionDuration: '10s' }} />
+            </div>
+
+            {/* Main Controls */}
+            <div className="player-buttons">
+
+              {/* RESET BUTTON */}
+              <button
+                onClick={resetSystemState}
+                className="player-btn-small"
+                title="Reset System"
+              >
+                <span>↺</span>
+              </button>
+
+              {/* BIG PLAY BUTTON (Mic) */}
+              <div
+                className={`player-btn-main ${isRecording ? 'recording' : ''} ${targetUserId.length !== 10 ? 'disabled' : ''}`}
+                onClick={() => {
+                  if (targetUserId.length !== 10) {
+                    setShowWarning(true);
+                    setTimeout(() => setShowWarning(false), 2000);
+                  } else if (verificationStatus !== 'processing') {
+                    toggleAudioCapture();
+                  }
+                }}
+              >
+                {/* Icon */}
+                {isRecording ? (
+                  <div className="icon-stop" />
+                ) : (
+                  <div className="icon-play" />
+                )}
+              </div>
+            </div>
+
+            {/* Status Text Below */}
+            <div style={{ textAlign: 'center', marginTop: '1rem', minHeight: '20px' }}>
+              <StatusMessage status={verificationStatus} similarity={similarityScore} />
+            </div>
+          </div>
+
         </div>
       </div>
     </div>
