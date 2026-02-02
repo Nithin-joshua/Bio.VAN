@@ -226,12 +226,12 @@ const EnrollPage = () => {
               {/* Navigation buttons */}
               <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '1rem' }}>
                 <Button variant="secondary" onClick={returnToPreviousStep} disabled={isSubmittingToServer}>REGRESS</Button>
-                {/* Only show next button if current sample has been recorded */}
-                {enrollmentData.recordings[currentSample.id] && (
-                  <Button onClick={proceedToNextStep} disabled={isSubmittingToServer}>
-                    {isSubmittingToServer ? "UPLOADING BIOMETRICS..." : (isLastSample ? "FINALIZE REGISTRATION" : "NEXT SAMPLE")}
-                  </Button>
-                )}
+                <Button 
+                  onClick={proceedToNextStep} 
+                  disabled={!enrollmentData.recordings[currentSample.id] || isSubmittingToServer}
+                >
+                  {isSubmittingToServer ? "UPLOADING BIOMETRICS..." : (isLastSample ? "FINALIZE REGISTRATION" : "NEXT SAMPLE")}
+                </Button>
               </div>
             </div>
           </Card>

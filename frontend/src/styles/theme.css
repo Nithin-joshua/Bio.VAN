@@ -81,3 +81,13 @@
   color: var(--bg-dark);
   box-shadow: 0 0 15px rgba(94, 122, 138, 0.5);
 }
+
+.core-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  border-color: var(--text-muted);
+  color: var(--text-muted);
+  box-shadow: none;
+  pointer-events: none;
+  background: rgba(0, 0, 0, 0.3);
+}
