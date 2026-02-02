@@ -44,3 +44,6 @@ build/
 lint_*.json
 lint_*.txt
 .DS_Store
+
+# Documentation
+PROJECT_REPORT.md
