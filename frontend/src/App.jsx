@@ -32,10 +32,10 @@ function App() {
   return (
     <ToastProvider>
       <Router>
-        <div className="app-container">
-          {/* Animated background effect (cyberpunk theme) */}
-          <BackgroundEffect />
+        {/* Fixed Background (remains static) */}
+        <BackgroundEffect />
 
+        <div className="app-container">
           {/* Application routes */}
           <Routes>
             {/* Landing page with feature overview */}

@@ -92,12 +92,6 @@
 }
 
 
-/* --- CYBER INPUTS --- */
-.cyber-input-group {
-    margin-bottom: 1.5rem;
-    position: relative;
-}
-
 /* --- SYSTEM STATUS BAR --- */
 .system-status-bar {
     display: flex;
@@ -163,6 +157,12 @@
 }
 
 
+/* --- CYBER INPUTS --- */
+.cyber-input-group {
+    margin-bottom: 1.5rem;
+    position: relative;
+}
+
 .cyber-label {
     color: var(--text-secondary);
     font-size: 0.8rem;
@@ -199,8 +199,63 @@
     border-radius: 8px;
 }
 
-@keyframes pulse {
-    0% { opacity: 0.5; }
-    50% { opacity: 1; }
-    100% { opacity: 0.5; }
+/* --- LORE TERMINAL --- */
+.lore-terminal-container {
+    background: rgba(5, 8, 10, 0.95);
+    border: 1px solid rgba(0, 243, 255, 0.3);
+    border-radius: 4px;
+    padding: 0;
+    font-family: var(--font-mono);
+    position: relative;
+    overflow: hidden;
+    margin-top: 2rem;
+    box-shadow: 0 0 15px rgba(0, 243, 255, 0.1);
+}
+
+.lore-header {
+    background: rgba(0, 243, 255, 0.1);
+    padding: 0.5rem 1rem;
+    border-bottom: 1px solid rgba(0, 243, 255, 0.3);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.8rem;
+}
+
+.lore-content {
+    padding: 1.5rem;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    line-height: 1.6;
+    min-height: 120px;
+}
+
+.lore-footer {
+    display: flex;
+    gap: 1.5rem;
+    padding: 0.5rem 1rem;
+    border-top: 1px solid rgba(0, 243, 255, 0.3);
+    font-size: 0.75rem;
+    background: rgba(0, 0, 0, 0.3);
+}
+
+.lore-stat {
+    color: var(--text-secondary);
+}
+
+.cursor-block {
+    display: inline-block;
+    color: var(--neon-blue);
+    animation: blink-opacity 1s step-end infinite;
+    margin-left: 4px;
+    vertical-align: text-bottom;
+}
+
+@keyframes blink-opacity {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+}
+
+.blink-text {
+    animation: blink-opacity 2s infinite;
 }

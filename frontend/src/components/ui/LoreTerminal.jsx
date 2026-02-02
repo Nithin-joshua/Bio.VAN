@@ -15,26 +15,27 @@ const LoreTerminal = () => {
     // Typing effect
     useEffect(() => {
         let index = 0;
+        let timeoutId;
         setDisplayedText(''); // Reset
+        setIsTyping(true);
         
         const typeChar = () => {
             if (index < LORE_TEXT.length) {
-                // Add next character
                 setDisplayedText(prev => prev + LORE_TEXT.charAt(index));
                 index++;
                 
                 // Random typing speed variation for realism
                 const delay = Math.random() * 30 + 20; 
-                setTimeout(typeChar, delay);
+                timeoutId = setTimeout(typeChar, delay);
             } else {
                 setIsTyping(false);
             }
         };
 
         // Start typing after a small delay
-        const initialDelay = setTimeout(typeChar, 500);
+        timeoutId = setTimeout(typeChar, 500);
         
-        return () => clearTimeout(initialDelay);
+        return () => clearTimeout(timeoutId);
     }, []);
 
     // Random metrics update simulation
@@ -63,7 +64,7 @@ const LoreTerminal = () => {
     return (
         <div className="lore-terminal-container">
             <div className="lore-header">
-                <span className="blink-text" style={{ color: 'var(--neon-green)' }}>&gt; ACCESSING SECURE ARCHIVE_</span>
+                <span className="blink-text" style={{ color: 'var(--neon-blue)' }}>&gt; ACCESSING SECURE ARCHIVE_</span>
                 <span className="lore-id" style={{ opacity: 0.7 }}>ID: 994-ALPHA</span>
             </div>
             

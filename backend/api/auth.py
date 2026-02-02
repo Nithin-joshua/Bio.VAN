@@ -9,7 +9,7 @@ from database.postgres_client import SessionLocal, User, create_user
 from core.security import verify_password, create_access_token, get_password_hash
 from config.settings import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
 
-router = APIRouter()
+router = APIRouter() 
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
