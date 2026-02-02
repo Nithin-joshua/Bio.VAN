@@ -6,16 +6,11 @@ import { useToast } from '../context/ToastContext';
 import { VERIFICATION_PARAGRAPH } from '../data/phonetics';
 
 // UI Components
-import MicControl from '../components/biometric/MicControl';
 import StatusMessage from '../components/biometric/StatusMessage';
-import VerificationStatus from '../components/biometric/VerificationStatus';
 import Waveform from '../components/signal/Waveform';
 import PulseRing from '../components/signal/PulseRing';
-import Loader from '../components/core/Loader';
-import Button from '../components/core/Button';
-import Logo from '../components/core/Logo';
-import Terminal from '../components/ui/Terminal';
 import SystemStatus from '../components/ui/SystemStatus';
+import VerificationResultModal from '../components/ui/VerificationResultModal';
 import '../styles/components.css';
 import '../styles/cyber-player.css';
 
@@ -33,13 +28,6 @@ const VerifyPage = () => {
   const [showWarning, setShowWarning] = useState(false);
   const [showResultModal, setShowResultModal] = useState(false);
   const [resultDetails, setResultDetails] = useState(null);
-  const [accessLogs, setAccessLogs] = useState([
-    { id: 'User-8842', time: '10:42:12', status: 'DENIED' },
-    { id: 'User-9921', time: '10:41:05', status: 'GRANTED' },
-    { id: 'User-1102', time: '10:38:55', status: 'GRANTED' },
-    { id: 'User-3321', time: '10:35:12', status: 'GRANTED' },
-    { id: 'User-0000', time: '10:30:22', status: 'DENIED' },
-  ]);
 
   const { isRecording, stream, startRecording, stopRecording } = useRecorder();
   const audioData = useWaveformAnalyzer(stream);
@@ -163,84 +151,28 @@ const VerifyPage = () => {
     setTimeout(() => appendTerminalLog('SYSTEM RE-ARMED. STANDBY.'), 500);
   };
 
+  const handlePlayKey = (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      if (targetUserId.length !== 10) {
+        setShowWarning(true);
+        setTimeout(() => setShowWarning(false), 2000);
+      } else if (verificationStatus !== 'processing') {
+        toggleAudioCapture();
+      }
+    }
+  };
+
   return (
     <div className="page-container" style={{ position: 'relative', height: '100vh', overflow: 'hidden' }}>
       <SystemStatus />
 
       {/* RESULT MODAL OVERLAY */}
       {showResultModal && resultDetails && (
-        <div style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          width: '100vw',
-          height: '100vh',
-          background: 'rgba(0, 0, 0, 0.85)',
-          zIndex: 1000,
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          backdropFilter: 'blur(5px)'
-        }}>
-          <div style={{
-            background: 'rgba(10, 20, 30, 0.95)',
-            border: `2px solid ${resultDetails.verified ? 'var(--neon-green)' : (resultDetails.spoof ? 'var(--neon-red)' : 'var(--neon-red)')}`,
-            padding: '2rem',
-            maxWidth: '500px',
-            width: '90%',
-            borderRadius: '8px',
-            boxShadow: `0 0 30px ${resultDetails.verified ? 'rgba(0, 255, 0, 0.2)' : 'rgba(255, 0, 0, 0.2)'}`,
-            textAlign: 'center',
-            position: 'relative'
-          }}>
-            {/* Decorative Corner Markers */}
-            <div style={{ position: 'absolute', top: '-2px', left: '-2px', width: '20px', height: '20px', borderTop: `4px solid ${resultDetails.verified ? 'var(--neon-green)' : 'var(--neon-red)'}`, borderLeft: `4px solid ${resultDetails.verified ? 'var(--neon-green)' : 'var(--neon-red)'}` }} />
-            <div style={{ position: 'absolute', bottom: '-2px', right: '-2px', width: '20px', height: '20px', borderBottom: `4px solid ${resultDetails.verified ? 'var(--neon-green)' : 'var(--neon-red)'}`, borderRight: `4px solid ${resultDetails.verified ? 'var(--neon-green)' : 'var(--neon-red)'}` }} />
-
-            <h2 style={{
-              color: resultDetails.verified ? 'var(--neon-green)' : 'var(--neon-red)',
-              fontFamily: 'var(--font-header)',
-              fontSize: '2rem',
-              marginBottom: '0.5rem',
-              textShadow: '0 0 10px currentColor'
-            }}>
-              {resultDetails.verified ? 'ACCESS GRANTED' : (resultDetails.spoof ? 'SECURITY ALERT' : 'ACCESS DENIED')}
-            </h2>
-
-            <div style={{ width: '100%', height: '1px', background: 'var(--text-secondary)', margin: '1.5rem 0' }} />
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', textAlign: 'left', fontFamily: 'var(--font-mono)' }}>
-              <div style={{ color: 'var(--text-secondary)' }}>TARGET ID:</div>
-              <div style={{ color: 'white', textAlign: 'right' }}>{targetUserId || 'UNKNOWN'}</div>
-
-              <div style={{ color: 'var(--text-secondary)' }}>CONFIDENCE:</div>
-              <div style={{ color: resultDetails.verified ? 'var(--neon-green)' : 'var(--neon-red)', textAlign: 'right' }}>
-                {(resultDetails.similarity_score * 100).toFixed(2)}%
-              </div>
-
-              <div style={{ color: 'var(--text-secondary)' }}>LIVELINESS:</div>
-              <div style={{ color: resultDetails.spoof ? 'var(--neon-red)' : 'var(--neon-green)', textAlign: 'right' }}>
-                {resultDetails.spoof ? 'FAILED (SPOOF)' : 'CONFIRMED'}
-              </div>
-
-              <div style={{ color: 'var(--text-secondary)' }}>TIMESTAMP:</div>
-              <div style={{ color: 'white', textAlign: 'right' }}>{new Date().toLocaleTimeString()}</div>
-            </div>
-
-            <Button
-              onClick={resetSystemState}
-              style={{ marginTop: '2rem', width: '100%', fontSize: '1.1rem' }}
-              variant={resultDetails.verified ? 'primary' : 'danger'}
-            >
-              CLOSE REPORT
-            </Button>
-          </div>
-        </div>
+        <VerificationResultModal
+          result={resultDetails}
+          onClose={resetSystemState}
+        />
       )}
-
-
-
-
 
       {/* CENTERED MUSIC PLAYER CARD */}
       <div style={{
@@ -366,6 +298,10 @@ const VerifyPage = () => {
                     toggleAudioCapture();
                   }
                 }}
+                role="button"
+                tabIndex={0}
+                onKeyDown={handlePlayKey}
+                aria-label={isRecording ? 'Stop Recording' : 'Start Recording'}
               >
                 {/* Icon */}
                 {isRecording ? (

@@ -267,3 +267,95 @@
     z-index: 0;
     pointer-events: none;
 }
+
+/* --- VERIFICATION RESULT MODAL --- */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.85);
+    z-index: 1000;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    backdrop-filter: blur(5px);
+}
+
+.modal-content {
+    background: rgba(10, 20, 30, 0.95);
+    border: 2px solid transparent;
+    /* Overridden inline */
+    padding: 2rem;
+    max-width: 500px;
+    width: 90%;
+    border-radius: 8px;
+    text-align: center;
+    position: relative;
+    opacity: 0;
+    transform: scale(0.95);
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.modal-content.visible {
+    opacity: 1;
+    transform: scale(1);
+}
+
+.corner-marker {
+    position: absolute;
+    width: 20px;
+    height: 20px;
+}
+
+.corner-marker.top-left {
+    top: -2px;
+    left: -2px;
+    border-top: 4px solid;
+    border-left: 4px solid;
+}
+
+.corner-marker.bottom-right {
+    bottom: -2px;
+    right: -2px;
+    border-bottom: 4px solid;
+    border-right: 4px solid;
+}
+
+.modal-header {
+    font-family: var(--font-header);
+    font-size: 2rem;
+    margin-bottom: 0.5rem;
+    text-shadow: 0 0 10px currentColor;
+}
+
+.modal-divider {
+    width: 100%;
+    height: 1px;
+    background: var(--text-secondary);
+    margin: 1.5rem 0;
+}
+
+.modal-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    text-align: left;
+    font-family: var(--font-mono);
+}
+
+.grid-label {
+    color: var(--text-secondary);
+}
+
+.grid-value {
+    color: white;
+    text-align: right;
+}
+
+.modal-close-btn {
+    margin-top: 2rem;
+    width: 100%;
+    font-size: 1.1rem;
+}
