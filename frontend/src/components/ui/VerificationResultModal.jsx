@@ -6,7 +6,8 @@ const VerificationResultModal = ({ result, onClose }) => {
     const [isVisible, setIsVisible] = useState(false);
 
     useEffect(() => {
-        setIsVisible(true);
+        const timer = setTimeout(() => setIsVisible(true), 10);
+        return () => clearTimeout(timer);
     }, []);
 
     const borderColor = result.verified ? 'var(--neon-green)' : 'var(--neon-red)';

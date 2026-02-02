@@ -10,7 +10,6 @@ const CyberAudioPlayer = ({ src, onEnded }) => {
     const [isPlaying, setIsPlaying] = useState(false);
     const [currentTime, setCurrentTime] = useState(0);
     const [duration, setDuration] = useState(0);
-    const [volume, setVolume] = useState(1);
 
     useEffect(() => {
         const audio = audioRef.current;
@@ -82,7 +81,7 @@ const CyberAudioPlayer = ({ src, onEnded }) => {
             <audio ref={audioRef} src={src} preload="metadata" />
 
             {/* Play/Pause Button */}
-            <button 
+            <button
                 onClick={togglePlay}
                 style={{
                     background: 'transparent',
@@ -113,12 +112,12 @@ const CyberAudioPlayer = ({ src, onEnded }) => {
                 <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', color: 'var(--text-secondary)', minWidth: '35px' }}>
                     {formatTime(currentTime)}
                 </span>
-                
-                <input 
-                    type="range" 
-                    min="0" 
-                    max={duration || 0} 
-                    value={currentTime} 
+
+                <input
+                    type="range"
+                    min="0"
+                    max={duration || 0}
+                    value={currentTime}
                     onChange={handleSeek}
                     style={{
                         flex: 1,
@@ -131,7 +130,7 @@ const CyberAudioPlayer = ({ src, onEnded }) => {
                         accentColor: 'var(--neon-blue)'
                     }}
                 />
-                
+
                 <span style={{ fontFamily: 'var(--font-mono)', fontSize: '0.7rem', color: 'var(--text-secondary)', minWidth: '35px' }}>
                     {formatTime(duration)}
                 </span>

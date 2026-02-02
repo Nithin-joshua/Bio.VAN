@@ -35,3 +35,12 @@ yarn-error.log
 # Project specific
 visited_sites.json
 cookies.json
+
+# Build
+dist/
+build/
+
+# Logs and Reports
+lint_*.json
+lint_*.txt
+.DS_Store

@@ -189,93 +189,94 @@ const EnrollPage = () => {
       case 2:
       case 3:
         // Steps 2-4: Record voice samples using Music Player Layout
-        const sampleIndex = currentStep - 1;
-        const currentSample = PHONETIC_PARAGRAPHS[sampleIndex];
-        const isLastSample = currentStep === 3;
-        const hasRecording = !!enrollmentData.recordings[currentSample.id];
+        {
+          const sampleIndex = currentStep - 1;
+          const currentSample = PHONETIC_PARAGRAPHS[sampleIndex];
+          const hasRecording = !!enrollmentData.recordings[currentSample.id];
 
-        return (
-          <div className="cyber-player-card">
-            {/* Header */}
-            <div className="player-header">
-              <div className="player-header-text">
-                VOICE CALIBRATION // SAMPLE {currentStep}/3
-              </div>
-            </div>
-
-            {/* Visualizer */}
-            <div className="visualizer-display">
-              <div className="visualizer-content">
-                <div style={{ width: '100%', height: '100%', opacity: 0.6 }}>
-                  <Waveform audioData={audioData} isActive={isRecording} />
-                </div>
-                <div style={{ position: 'absolute' }}>
-                  <PulseRing isActive={isRecording} />
+          return (
+            <div className="cyber-player-card">
+              {/* Header */}
+              <div className="player-header">
+                <div className="player-header-text">
+                  VOICE CALIBRATION // SAMPLE {currentStep}/3
                 </div>
               </div>
-            </div>
 
-            {/* Track Info */}
-            <div className="player-track-info">
-              <div className="track-title-row">
-                <div style={{ flex: 1 }}>
-                  <div className="track-title-label">
-                    Encoding Profile
+              {/* Visualizer */}
+              <div className="visualizer-display">
+                <div className="visualizer-content">
+                  <div style={{ width: '100%', height: '100%', opacity: 0.6 }}>
+                    <Waveform audioData={audioData} isActive={isRecording} />
                   </div>
-                  <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', fontFamily: 'var(--font-mono)' }}>
-                    {enrollmentData.fullName || "UNKNOWN SUBJECT"}
+                  <div style={{ position: 'absolute' }}>
+                    <PulseRing isActive={isRecording} />
                   </div>
                 </div>
-                <div style={{ paddingBottom: '2px' }}>
-                  <div className={`status-dot ${hasRecording ? 'active' : (isRecording ? 'recording' : '')}`} />
+              </div>
+
+              {/* Track Info */}
+              <div className="player-track-info">
+                <div className="track-title-row">
+                  <div style={{ flex: 1 }}>
+                    <div className="track-title-label">
+                      Encoding Profile
+                    </div>
+                    <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', fontFamily: 'var(--font-mono)' }}>
+                      {enrollmentData.fullName || "UNKNOWN SUBJECT"}
+                    </div>
+                  </div>
+                  <div style={{ paddingBottom: '2px' }}>
+                    <div className={`status-dot ${hasRecording ? 'active' : (isRecording ? 'recording' : '')}`} />
+                  </div>
+                </div>
+
+                <div className="player-lyrics">
+                  <div className="player-lyrics-text">
+                    "{currentSample.text}"
+                  </div>
                 </div>
               </div>
 
-              <div className="player-lyrics">
-                <div className="player-lyrics-text">
-                  "{currentSample.text}"
+              {/* Controls */}
+              <div className="player-controls-area">
+                <div className="player-progress-bar">
+                  <div className="player-progress-fill" style={{ width: isRecording ? '100%' : '0%', transitionDuration: '10s' }} />
+                </div>
+
+                <div className="player-buttons">
+                  {/* Previous Step */}
+                  <button onClick={returnToPreviousStep} className="player-btn-small" title="Back">
+                    <span style={{ transform: 'scaleX(-1)', display: 'inline-block' }}>➜</span>
+                  </button>
+
+                  {/* Record / Stop */}
+                  <div
+                    className={`player-btn-main ${isRecording ? 'recording' : ''}`}
+                    onClick={() => toggleRecording(currentSample.id)}
+                  >
+                    {isRecording ? <div className="icon-stop" /> : <div className="icon-play" />}
+                  </div>
+
+                  {/* Next Step */}
+                  <button
+                    onClick={proceedToNextStep}
+                    className="player-btn-small"
+                    disabled={!hasRecording || isSubmittingToServer}
+                    style={{ opacity: (!hasRecording || isSubmittingToServer) ? 0.5 : 1, cursor: (!hasRecording || isSubmittingToServer) ? 'not-allowed' : 'pointer' }}
+                    title="Next Sample"
+                  >
+                    <span>➜</span>
+                  </button>
+                </div>
+
+                <div style={{ textAlign: 'center', marginTop: '1rem', color: 'var(--text-secondary)', fontSize: '0.7rem', fontFamily: 'var(--font-mono)' }}>
+                  {isRecording ? "RECORDING IN PROGRESS..." : (hasRecording ? "SAMPLE BUFFERED. PROCEED >>" : "AWAITING INPUT")}
                 </div>
               </div>
             </div>
-
-            {/* Controls */}
-            <div className="player-controls-area">
-              <div className="player-progress-bar">
-                <div className="player-progress-fill" style={{ width: isRecording ? '100%' : '0%', transitionDuration: '10s' }} />
-              </div>
-
-              <div className="player-buttons">
-                {/* Previous Step */}
-                <button onClick={returnToPreviousStep} className="player-btn-small" title="Back">
-                  <span style={{ transform: 'scaleX(-1)', display: 'inline-block' }}>➜</span>
-                </button>
-
-                {/* Record / Stop */}
-                <div
-                  className={`player-btn-main ${isRecording ? 'recording' : ''}`}
-                  onClick={() => toggleRecording(currentSample.id)}
-                >
-                  {isRecording ? <div className="icon-stop" /> : <div className="icon-play" />}
-                </div>
-
-                {/* Next Step */}
-                <button
-                  onClick={proceedToNextStep}
-                  className="player-btn-small"
-                  disabled={!hasRecording || isSubmittingToServer}
-                  style={{ opacity: (!hasRecording || isSubmittingToServer) ? 0.5 : 1, cursor: (!hasRecording || isSubmittingToServer) ? 'not-allowed' : 'pointer' }}
-                  title="Next Sample"
-                >
-                  <span>➜</span>
-                </button>
-              </div>
-
-              <div style={{ textAlign: 'center', marginTop: '1rem', color: 'var(--text-secondary)', fontSize: '0.7rem', fontFamily: 'var(--font-mono)' }}>
-                {isRecording ? "RECORDING IN PROGRESS..." : (hasRecording ? "SAMPLE BUFFERED. PROCEED >>" : "AWAITING INPUT")}
-              </div>
-            </div>
-          </div>
-        );
+          );
+        }
       case 4:
         // Step 5: Success confirmation
         return (

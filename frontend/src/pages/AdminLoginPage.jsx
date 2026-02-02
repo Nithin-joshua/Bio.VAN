@@ -35,12 +35,12 @@ const AdminLoginPage = () => {
 
             // const data = await response.json();
             // localStorage.setItem('admin_token', data.access_token);
-            
+
             // Set dummy token for admin access
             localStorage.setItem('admin_token', 'bypass_token');
             navigate('/admin/dashboard');
 
-        } catch (err) {
+        } catch {
             setError('ACCESS DENIED: Invalid credentials');
         } finally {
             setLoading(false);
@@ -50,7 +50,7 @@ const AdminLoginPage = () => {
     return (
         <div className="page-container" style={{ justifyContent: 'center', alignItems: 'center' }}>
             <SystemStatus />
-            
+
             <div style={{ marginBottom: '2rem', textAlign: 'center' }}>
                 <Logo size="medium" style={{ justifyContent: 'center' }} />
                 <h2 style={{ fontFamily: 'var(--font-header)', color: 'var(--text-secondary)', letterSpacing: '4px', fontSize: '1rem', marginTop: '1rem' }}>
@@ -99,7 +99,7 @@ const AdminLoginPage = () => {
                 </Card>
 
                 <div className="mobile-hide" style={{ width: '300px' }}>
-                     <Card title="SYSTEM DIAGNOSTICS" status="MONITORING" delay={0.3}>
+                    <Card title="SYSTEM DIAGNOSTICS" status="MONITORING" delay={0.3}>
                         <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', color: 'var(--text-secondary)', fontSize: '0.8rem' }}>
                                 <span>SERVER STATUS</span>
@@ -118,7 +118,7 @@ const AdminLoginPage = () => {
                                 UNAUTHORIZED ACCESS ATTEMPTS WILL BE LOGGED AND REPORTED TO ISSEC.
                             </div>
                         </div>
-                     </Card>
+                    </Card>
                 </div>
             </div>
         </div>

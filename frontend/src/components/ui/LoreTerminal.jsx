@@ -5,7 +5,6 @@ const LORE_TEXT = "Bio.VAN operates as a decentralized voice authentication prot
 
 const LoreTerminal = () => {
     const [displayedText, setDisplayedText] = useState('');
-    const [isTyping, setIsTyping] = useState(true);
     const [metrics, setMetrics] = useState({
         latency: 12,
         encryption: 'QUANTUM-256',
@@ -17,24 +16,21 @@ const LoreTerminal = () => {
         let index = 0;
         let timeoutId;
         setDisplayedText(''); // Reset
-        setIsTyping(true);
-        
+
         const typeChar = () => {
             if (index < LORE_TEXT.length) {
                 setDisplayedText(prev => prev + LORE_TEXT.charAt(index));
                 index++;
-                
+
                 // Random typing speed variation for realism
-                const delay = Math.random() * 30 + 20; 
+                const delay = Math.random() * 30 + 20;
                 timeoutId = setTimeout(typeChar, delay);
-            } else {
-                setIsTyping(false);
             }
         };
 
         // Start typing after a small delay
         timeoutId = setTimeout(typeChar, 500);
-        
+
         return () => clearTimeout(timeoutId);
     }, []);
 
@@ -43,10 +39,10 @@ const LoreTerminal = () => {
         const interval = setInterval(() => {
             // Randomly fluctuate latency
             const newLatency = Math.floor(Math.random() * 20) + 10; // 10-30ms range
-            
+
             // Occasionally "re-key" encryption
             const encryptionStatus = Math.random() > 0.95 ? 'RE-KEYING...' : 'QUANTUM-256';
-            
+
             // Occasionally switch nodes
             const nodes = ['TOKYO-03', 'LONDON-01', 'NY-NET-05', 'SINGAPORE-09'];
             const currentNode = Math.random() > 0.98 ? nodes[Math.floor(Math.random() * nodes.length)] : metrics.node;
@@ -59,7 +55,7 @@ const LoreTerminal = () => {
         }, 800);
 
         return () => clearInterval(interval);
-    }, []);
+    }, [metrics.node]);
 
     return (
         <div className="lore-terminal-container">
@@ -67,7 +63,7 @@ const LoreTerminal = () => {
                 <span className="blink-text" style={{ color: 'var(--neon-blue)' }}>&gt; ACCESSING SECURE ARCHIVE_</span>
                 <span className="lore-id" style={{ opacity: 0.7 }}>ID: 994-ALPHA</span>
             </div>
-            
+
             <div className="lore-content">
                 <span style={{ color: 'var(--text-secondary)' }}>
                     {displayedText}
@@ -86,7 +82,7 @@ const LoreTerminal = () => {
                     ENCRYPTION: <span className="neon-purple-text">{metrics.encryption}</span>
                 </div>
             </div>
-            
+
             {/* Scanline overlay removed */}
         </div>
     );

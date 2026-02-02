@@ -21,17 +21,6 @@ export const ToastProvider = ({ children }) => {
      * @param {string} message - Text to display in the notification
      * @param {string} type - Notification type: 'info', 'success', 'warning', or 'error'
      */
-    const displayNotification = useCallback((message, type = 'info') => {
-        // Generate unique ID using timestamp (simple but effective for this use case)
-        const notificationId = Date.now();
-        setToasts(prev => [...prev, { id: notificationId, message, type }]);
-
-        // Auto-dismiss after 5 seconds to prevent notification buildup
-        setTimeout(() => {
-            dismissNotification(notificationId);
-        }, 5000);
-    }, []);
-
     /**
      * Manually dismisses a toast notification.
      * Called automatically after timeout or when user clicks close button.
@@ -41,6 +30,24 @@ export const ToastProvider = ({ children }) => {
     const dismissNotification = useCallback((notificationId) => {
         setToasts(prev => prev.filter(toast => toast.id !== notificationId));
     }, []);
+
+    /**
+     * Displays a new toast notification.
+     * Automatically dismisses after 5 seconds.
+     * 
+     * @param {string} message - Text to display in the notification
+     * @param {string} type - Notification type: 'info', 'success', 'warning', or 'error'
+     */
+    const displayNotification = useCallback((message, type = 'info') => {
+        // Generate unique ID using timestamp (simple but effective for this use case)
+        const notificationId = Date.now();
+        setToasts(prev => [...prev, { id: notificationId, message, type }]);
+
+        // Auto-dismiss after 5 seconds to prevent notification buildup
+        setTimeout(() => {
+            dismissNotification(notificationId);
+        }, 5000);
+    }, [dismissNotification]);
 
     return (
         <ToastContext.Provider value={{ showToast: displayNotification }}>
@@ -78,6 +85,7 @@ export const ToastProvider = ({ children }) => {
  * @returns {Function} showToast - Function to display a new notification
  * @throws {Error} If used outside of ToastProvider
  */
+// eslint-disable-next-line react-refresh/only-export-components
 export const useToast = () => {
     const context = useContext(ToastContext);
     if (!context) {

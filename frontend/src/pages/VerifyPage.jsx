@@ -45,8 +45,11 @@ const VerifyPage = () => {
 
   // Initialize system on component mount
   useEffect(() => {
-    appendTerminalLog('SYSTEM INITIALIZED. STANDBY.');
-    appendTerminalLog('WAITING FOR AUDIO INPUT...');
+    const timer = setTimeout(() => {
+      appendTerminalLog('SYSTEM INITIALIZED. STANDBY.');
+      appendTerminalLog('WAITING FOR AUDIO INPUT...');
+    }, 100);
+    return () => clearTimeout(timer);
   }, []);
 
   /**

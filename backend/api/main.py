@@ -7,6 +7,7 @@ import random
 import string
 import numpy as np
 import librosa
+import re
 
 from core.preprocessing import load_audio
 from core.speaker_model import ECAPAModel
@@ -66,7 +67,7 @@ def health():
 # -------------------------
 # Enroll Speaker
 # -------------------------
-import re
+
 
 # ...
 
@@ -92,8 +93,8 @@ async def enroll(
         
         # Ensure we have enough letters, else pad with random
         if not clean_name:
-             # Fallback if name has no letters
-             clean_name = string.ascii_letters 
+            # Fallback if name has no letters
+            clean_name = string.ascii_letters 
         
         # First 3 digits: Random letters from user's name (alphabets only)
         # Using choices() handles names shorter than 3 chars by repeating
@@ -106,7 +107,7 @@ async def enroll(
         speaker_id = prefix + suffix
         
         # hashed_pw = get_password_hash(password)
-        user = create_user(full_name, email, role, user_id=speaker_id, hashed_password=None)
+        create_user(full_name, email, role, user_id=speaker_id, hashed_password=None)
     except Exception as e:
         print(f"DEBUG: Database Error in enroll: {e}")
         raise HTTPException(status_code=500, detail=f"Database Error: {str(e)}")
@@ -133,10 +134,10 @@ async def enroll(
                 # Liveness Check
                 liveness = liveness_detector.analyze(audio)
                 if not liveness["is_live"]:
-                     raise HTTPException(
-                         status_code=400,
-                         detail=f"Spoof detected in {file.filename}: {liveness['reason']}"
-                     )
+                    raise HTTPException(
+                        status_code=400,
+                        detail=f"Spoof detected in {file.filename}: {liveness['reason']}"
+                    )
 
                 emb = model.extract_embedding(audio)
                 embeddings.append(emb)
@@ -146,7 +147,7 @@ async def enroll(
 
         # 3. Average Embeddings (Mean Vector)
         if not embeddings:
-             raise HTTPException(status_code=400, detail="No valid audio samples processed")
+            raise HTTPException(status_code=400, detail="No valid audio samples processed")
         
         # Stack and average
         # embeddings is list of numpy arrays or lists (depending on model output)
@@ -217,28 +218,28 @@ async def verify(
         from config.settings import MIN_AUDIO_DURATION
         
         if duration < MIN_AUDIO_DURATION:
-             return {
-                 "verified": False,
-                 "similarity_score": 0.0,
-                 "matched_speaker_id": None,
-                 "message": f"Audio too short ({duration:.2f}s). Please speak for at least {MIN_AUDIO_DURATION} seconds."
-             }
+            return {
+                "verified": False,
+                "similarity_score": 0.0,
+                "matched_speaker_id": None,
+                "message": f"Audio too short ({duration:.2f}s). Please speak for at least {MIN_AUDIO_DURATION} seconds."
+            }
 
         # Liveness Check
         liveness = liveness_detector.analyze(audio)
         print(f"DEBUG: Liveness Result: {liveness}")
         if not liveness["is_live"]:
-             log_auth(
+            log_auth(
                 speaker_id if speaker_id else -1,
                 0.0,
                 "SPOOF_REJECTED"
-             )
-             return {
-                 "verified": False,
-                 "similarity_score": 0.0,
-                 "matched_speaker_id": None,
-                 "message": f"Spoof detected: {liveness['reason']}"
-             }
+            )
+            return {
+                "verified": False,
+                "similarity_score": 0.0,
+                "matched_speaker_id": None,
+                "message": f"Spoof detected: {liveness['reason']}"
+            }
 
         embedding = model.extract_embedding(audio)
 

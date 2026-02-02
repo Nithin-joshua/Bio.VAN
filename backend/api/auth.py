@@ -5,8 +5,8 @@ from sqlalchemy.orm import Session
 from datetime import timedelta
 from jose import JWTError, jwt
 
-from database.postgres_client import SessionLocal, User, create_user
-from core.security import verify_password, create_access_token, get_password_hash
+from database.postgres_client import SessionLocal, User
+from core.security import verify_password, create_access_token
 from config.settings import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
 
 router = APIRouter() 
