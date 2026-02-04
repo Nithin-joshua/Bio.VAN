@@ -3,7 +3,6 @@
   height: 100vh;
   display: flex;
   flex-direction: column;
-  background-color: var(--bg-dark);
   position: relative;
   /* CRT FLICKER ANIMATION */
   animation: crt-flicker 0.1s infinite;
@@ -71,16 +70,7 @@
   overflow-y: auto;
   /* Fix: Allow scrolling */
   overflow-x: hidden;
-  background-color: var(--bg-dark);
-
-  /* MOVING GRID PATTERN - Enhanced 3D feel */
-  background-image:
-    linear-gradient(0deg, rgba(0, 243, 255, 0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0, 243, 255, 0.05) 1px, transparent 1px);
-  background-size: 50px 50px;
-  animation: grid-move 20s linear infinite;
-  /* Removed perspective to allow fixed positioning of HUD elements */
-  /* perspective: 1000px; */
+  /* Removed solid background to show BackgroundGrid */
 }
 
 @keyframes grid-move {

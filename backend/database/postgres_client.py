@@ -20,6 +20,10 @@ class User(Base):
     hashed_password = Column(String, nullable=True)
     voice_profile_status = Column(String, default="pending")
     created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # Security Architecture Updates
+    voice_uuid = Column(String, unique=True, nullable=True) # Anonymized ID for Vector DB
+    enrolled_at = Column(DateTime, default=datetime.utcnow) # For Voice Expiry Policy
 
 class AuthLog(Base):
     __tablename__ = "auth_logs"
@@ -33,11 +37,11 @@ class AuthLog(Base):
 def init_db():
     Base.metadata.create_all(engine)
 
-def create_user(full_name: str, email: str, role: str, user_id: str, hashed_password: str = None):
+def create_user(full_name: str, email: str, role: str, user_id: str, hashed_password: str = None, voice_uuid: str = None):
     session = SessionLocal()
     try:
-        # Check if user exists
-        existing_user = session.query(User).filter(User.id == user_id).first()
+        # Check if user exists by ID or Email
+        existing_user = session.query(User).filter((User.id == user_id) | (User.email == email)).first()
         if existing_user:
             # Update existing user's details if provided
             if hashed_password:
@@ -48,8 +52,11 @@ def create_user(full_name: str, email: str, role: str, user_id: str, hashed_pass
                 existing_user.email = email
             if role:
                 existing_user.role = role
-            # Reset voice profile status to active as we are re-enrolling
+            # Reset voice profile status and enrollment time
             existing_user.voice_profile_status = "active"
+            existing_user.enrolled_at = datetime.utcnow()
+            if voice_uuid:
+                 existing_user.voice_uuid = voice_uuid
             
             session.commit()
             session.refresh(existing_user)
@@ -61,7 +68,9 @@ def create_user(full_name: str, email: str, role: str, user_id: str, hashed_pass
             email=email,
             role=role,
             hashed_password=hashed_password,
-            voice_profile_status="active"
+            voice_profile_status="active",
+            voice_uuid=voice_uuid,
+            enrolled_at=datetime.utcnow()
         )
         session.add(new_user)
         session.commit()
@@ -81,6 +90,13 @@ def get_all_users():
     finally:
         session.close()
 
+def get_user_by_voice_uuid(voice_uuid: str):
+    session = SessionLocal()
+    try:
+        return session.query(User).filter(User.voice_uuid == voice_uuid).first()
+    finally:
+        session.close()
+
 def log_auth(speaker_id, score, decision):
     session = SessionLocal()
     log = AuthLog(
@@ -91,3 +107,10 @@ def log_auth(speaker_id, score, decision):
     session.add(log)
     session.commit()
     session.close()
+
+def get_user_by_id(user_id: str):
+    session = SessionLocal()
+    try:
+        return session.query(User).filter(User.id == user_id).first()
+    finally:
+        session.close()

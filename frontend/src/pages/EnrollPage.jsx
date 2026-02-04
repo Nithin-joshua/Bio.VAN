@@ -1,5 +1,6 @@
 import React, { useState, Component } from 'react';
 import { Link } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import { useToast } from '../context/ToastContext';
 import Button from '../components/core/Button';
 import Logo from '../components/core/Logo';
@@ -7,7 +8,7 @@ import Select from '../components/core/Select';
 import Card from '../components/ui/Card';
 import SystemStatus from '../components/ui/SystemStatus';
 import { PHONETIC_PARAGRAPHS } from '../data/phonetics';
-import { registerUserVoiceprint } from '../api/enroll.api';
+import { registerUserVoiceprint, checkVoiceLiveness, fetchChallengePhrases } from '../api/enroll.api';
 import '../styles/components.css';
 import '../styles/cyber-player.css';
 
@@ -16,6 +17,7 @@ import { useRecorder } from '../audio/useRecorder';
 import { useWaveformAnalyzer } from '../audio/useWaveformAnalyzer';
 import Waveform from '../components/signal/Waveform';
 import PulseRing from '../components/signal/PulseRing';
+import VoiceActivityRing from '../components/signal/VoiceActivityRing';
 
 class ErrorBoundary extends Component {
   constructor(props) {
@@ -69,6 +71,17 @@ const EnrollPage = () => {
     recordings: {}  // Will store 3 voice sample blobs keyed by sample_1, sample_2, sample_3
   });
 
+  const [challengePhrases, setChallengePhrases] = useState([]);
+
+  // Fetch Challenges on Mount
+  React.useEffect(() => {
+    const initChallenges = async () => {
+      const phrases = await fetchChallengePhrases(3);
+      setChallengePhrases(phrases);
+    };
+    initChallenges();
+  }, []);
+
   /**
    * Toggles recording state for enrollment
    */
@@ -76,9 +89,24 @@ const EnrollPage = () => {
     if (isRecording) {
       // Stop recording
       const audioBlob = await stopRecording();
+
       if (audioBlob) {
-        saveVoiceSample(audioBlob, sampleId);
-        showToast("Sample captured. Review or Proceed.", "success");
+        showToast("Verifying sample integrity...", "info");
+
+        // --- REAL-TIME VALIDATION ---
+        try {
+          const check = await checkVoiceLiveness(audioBlob);
+
+          if (check.status === "success") {
+            saveVoiceSample(audioBlob, sampleId);
+            showToast("Sample Verified: Live Human Audio.", "success");
+          } else {
+            showToast(`Sample Rejected: ${check.message}`, "error");
+          }
+        } catch (err) {
+          showToast("Verification Unavailable. Proceeding locally.", "warning");
+          saveVoiceSample(audioBlob, sampleId);
+        }
       }
     } else {
       // Start recording
@@ -106,7 +134,9 @@ const EnrollPage = () => {
 
       setIsSubmittingToServer(true);
       try {
-        const response = await registerUserVoiceprint(enrollmentData);
+        // Include challenge phrases in submission
+        const payload = { ...enrollmentData, challengePhrases };
+        const response = await registerUserVoiceprint(payload);
         if (response && response.user_id) {
           setGeneratedUserId(response.user_id);
         }
@@ -191,11 +221,13 @@ const EnrollPage = () => {
         // Steps 2-4: Record voice samples using Music Player Layout
         {
           const sampleIndex = currentStep - 1;
-          const currentSample = PHONETIC_PARAGRAPHS[sampleIndex];
-          const hasRecording = !!enrollmentData.recordings[currentSample.id];
+          const currentSampleId = PHONETIC_PARAGRAPHS[sampleIndex].id; // Keep IDs consistent (sample_1, etc)
+          const currentText = challengePhrases[sampleIndex] || "Establishing Secure Channel...";
+          const hasRecording = !!enrollmentData.recordings[currentSampleId];
 
           return (
-            <div className="cyber-player-card">
+            <Card className="cyber-player-card" style={{ padding: '1.5rem', borderRadius: '30px' }}>
+
               {/* Header */}
               <div className="player-header">
                 <div className="player-header-text">
@@ -233,7 +265,7 @@ const EnrollPage = () => {
 
                 <div className="player-lyrics">
                   <div className="player-lyrics-text">
-                    "{currentSample.text}"
+                    "{currentText}"
                   </div>
                 </div>
               </div>
@@ -253,7 +285,7 @@ const EnrollPage = () => {
                   {/* Record / Stop */}
                   <div
                     className={`player-btn-main ${isRecording ? 'recording' : ''}`}
-                    onClick={() => toggleRecording(currentSample.id)}
+                    onClick={() => toggleRecording(currentSampleId)}
                   >
                     {isRecording ? <div className="icon-stop" /> : <div className="icon-play" />}
                   </div>
@@ -273,8 +305,29 @@ const EnrollPage = () => {
                 <div style={{ textAlign: 'center', marginTop: '1rem', color: 'var(--text-secondary)', fontSize: '0.7rem', fontFamily: 'var(--font-mono)' }}>
                   {isRecording ? "RECORDING IN PROGRESS..." : (hasRecording ? "SAMPLE BUFFERED. PROCEED >>" : "AWAITING INPUT")}
                 </div>
+
+                {/* Buffer Status Indicators */}
+                <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginTop: '10px' }}>
+                  {[1, 2, 3].map(step => {
+                    const sId = PHONETIC_PARAGRAPHS[step - 1].id;
+                    const isBuffered = !!enrollmentData.recordings[sId];
+                    return (
+                      <div
+                        key={sId}
+                        title={`Sample ${step} ${isBuffered ? 'Buffered' : 'Eqmpty'}`}
+                        style={{
+                          width: '8px', height: '8px',
+                          borderRadius: '50%',
+                          backgroundColor: isBuffered ? 'var(--primary-color)' : 'rgba(255,255,255,0.1)',
+                          boxShadow: isBuffered ? '0 0 5px var(--primary-color)' : 'none',
+                          transition: 'all 0.3s'
+                        }}
+                      />
+                    );
+                  })}
+                </div>
               </div>
-            </div>
+            </Card>
           );
         }
       case 4:
@@ -310,12 +363,22 @@ const EnrollPage = () => {
         <SystemStatus />
         {/* Page header with logo and title */}
         {currentStep === 0 && (
-          <div style={{ marginBottom: '2rem', textAlign: 'center' }}>
+          <motion.div
+            style={{ marginBottom: '2rem', textAlign: 'center' }}
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.3 }}
+          >
             <Logo size="medium" style={{ justifyContent: 'center' }} />
-            <h2 style={{ fontFamily: 'var(--font-header)', color: 'var(--text-secondary)', letterSpacing: '4px', fontSize: '1rem', marginTop: '1rem' }}>
+            <motion.h2
+              style={{ fontFamily: 'var(--font-header)', color: 'var(--text-secondary)', letterSpacing: '4px', fontSize: '1rem', marginTop: '1rem' }}
+              initial={{ opacity: 0, letterSpacing: '0px' }}
+              animate={{ opacity: 1, letterSpacing: '4px' }}
+              transition={{ duration: 0.8, delay: 0.6 }}
+            >
               NEW USER ENROLLMENT PROTOCOL
-            </h2>
-          </div>
+            </motion.h2>
+          </motion.div>
         )}
 
         {/* Render current step content */}

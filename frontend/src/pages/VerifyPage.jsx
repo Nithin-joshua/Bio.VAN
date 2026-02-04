@@ -1,16 +1,18 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useRecorder } from '../audio/useRecorder';
 import { useWaveformAnalyzer } from '../audio/useWaveformAnalyzer';
-import { authenticateVoiceSample } from '../api/verify.api';
+import { authenticateVoiceSample, fetchChallengePhrase } from '../api/verify.api';
 import { useToast } from '../context/ToastContext';
-import { VERIFICATION_PARAGRAPH } from '../data/phonetics';
 
 // UI Components
 import StatusMessage from '../components/biometric/StatusMessage';
 import Waveform from '../components/signal/Waveform';
 import PulseRing from '../components/signal/PulseRing';
+import VoiceActivityRing from '../components/signal/VoiceActivityRing';
 import SystemStatus from '../components/ui/SystemStatus';
 import VerificationResultModal from '../components/ui/VerificationResultModal';
+import Card from '../components/ui/Card';
 import '../styles/components.css';
 import '../styles/cyber-player.css';
 
@@ -20,7 +22,8 @@ import '../styles/cyber-player.css';
  * Shows waveform visualization, terminal logs, and verification status.
  */
 const VerifyPage = () => {
-  // Verification state machine: idle → recording → processing → verified/rejected/spoof
+  const navigate = useNavigate();
+  // Verification state machine: idle → recording → processing → verified/rejected/spoof/expired
   const [verificationStatus, setVerificationStatus] = useState('idle');
   const [similarityScore, setSimilarityScore] = useState(0);
   const [terminalLogs, setTerminalLogs] = useState([]);
@@ -28,6 +31,7 @@ const VerifyPage = () => {
   const [showWarning, setShowWarning] = useState(false);
   const [showResultModal, setShowResultModal] = useState(false);
   const [resultDetails, setResultDetails] = useState(null);
+  const [challengePhrase, setChallengePhrase] = useState("Establishing Secure Link...");
 
   const { isRecording, stream, startRecording, stopRecording } = useRecorder();
   const audioData = useWaveformAnalyzer(stream);
@@ -45,11 +49,20 @@ const VerifyPage = () => {
 
   // Initialize system on component mount
   useEffect(() => {
-    const timer = setTimeout(() => {
-      appendTerminalLog('SYSTEM INITIALIZED. STANDBY.');
-      appendTerminalLog('WAITING FOR AUDIO INPUT...');
-    }, 100);
-    return () => clearTimeout(timer);
+    const initSystem = async () => {
+      const timer = setTimeout(() => {
+        appendTerminalLog('SYSTEM INITIALIZED. STANDBY.');
+        appendTerminalLog('OBTAINING SECURITY CHALLENGE...');
+      }, 100);
+
+      // Fetch Challenge
+      const phrase = await fetchChallengePhrase();
+      setChallengePhrase(phrase);
+      appendTerminalLog(`PROTOCOL: "${phrase}"`);
+
+      return () => clearTimeout(timer);
+    };
+    initSystem();
   }, []);
 
   /**
@@ -101,7 +114,7 @@ const VerifyPage = () => {
       appendTerminalLog('TRANSMITTING TO BIO-CORE...');
 
       // Actual API Call
-      const result = await authenticateVoiceSample(audioBlob, targetUserId);
+      const result = await authenticateVoiceSample(audioBlob, targetUserId, challengePhrase);
 
       // Simulate analysis steps
       appendTerminalLog('DATA RECEIVED. DECRYPTING...');
@@ -123,6 +136,15 @@ const VerifyPage = () => {
         appendTerminalLog('!!! SECURITY VIOLATION: SYNTHETIC SIGNATURE !!!');
         setVerificationStatus('spoof');
         showToast('Artificial signature detected.', 'error');
+      } else if (result.error_code === 'VOICE_EXPIRED') {
+        appendTerminalLog('ERROR 403: BIOMETRIC PROFILE EXPIRED');
+        setVerificationStatus('expired');
+        showToast(result.message, 'warning');
+
+        // Auto-redirect to enrollment after delay
+        setTimeout(() => {
+          navigate('/enroll');
+        }, 4000);
       } else if (result.verified) {
         appendTerminalLog(`IDENTITY VERIFIED. CONFIDENCE: ${(result.similarity_score * 100).toFixed(2)}%`);
         setVerificationStatus('verified');
@@ -151,7 +173,13 @@ const VerifyPage = () => {
     appendTerminalLog('PURGING CACHE...');
     setVerificationStatus('idle');
     setSimilarityScore(0);
-    setTimeout(() => appendTerminalLog('SYSTEM RE-ARMED. STANDBY.'), 500);
+
+    // Refresh Challenge on Reset
+    fetchChallengePhrase().then(phrase => {
+      setChallengePhrase(phrase);
+      appendTerminalLog(`NEW PROTOCOL: "${phrase}"`);
+      appendTerminalLog('SYSTEM RE-ARMED. STANDBY.');
+    });
   };
 
   const handlePlayKey = (e) => {
@@ -187,7 +215,8 @@ const VerifyPage = () => {
         padding: '1.5rem',
         zIndex: 1
       }}>
-        <div className="cyber-player-card">
+        <Card className="cyber-player-card" style={{ padding: '1.5rem', borderRadius: '30px' }}>
+
 
           {/* 1. TOP HEADER ("Playlist" Name) */}
           <div className="player-header">
@@ -199,7 +228,7 @@ const VerifyPage = () => {
           {/* 2. "ALBUM ART" - VISUALIZER / TERMINAL HYBRID */}
           <div className="visualizer-display">
             {/* STATE A: PROCESSING TERMINAL */}
-            {(verificationStatus === 'processing' || verificationStatus === 'verified' || verificationStatus === 'rejected' || verificationStatus === 'spoof') ? (
+            {(verificationStatus === 'processing' || verificationStatus === 'verified' || verificationStatus === 'rejected' || verificationStatus === 'spoof' || verificationStatus === 'expired') ? (
               <div className="player-terminal">
                 <div className="player-terminal-header">
                   &gt;_ SYSTEM_LOG
@@ -265,7 +294,7 @@ const VerifyPage = () => {
             {/* Protocol Text */}
             <div className="player-lyrics">
               <div className="player-lyrics-text">
-                "{VERIFICATION_PARAGRAPH.text}"
+                "{challengePhrase}"
               </div>
             </div>
 
@@ -291,27 +320,34 @@ const VerifyPage = () => {
               </button>
 
               {/* BIG PLAY BUTTON (Mic) */}
-              <div
-                className={`player-btn-main ${isRecording ? 'recording' : ''} ${targetUserId.length !== 10 ? 'disabled' : ''}`}
-                onClick={() => {
-                  if (targetUserId.length !== 10) {
-                    setShowWarning(true);
-                    setTimeout(() => setShowWarning(false), 2000);
-                  } else if (verificationStatus !== 'processing') {
-                    toggleAudioCapture();
-                  }
-                }}
-                role="button"
-                tabIndex={0}
-                onKeyDown={handlePlayKey}
-                aria-label={isRecording ? 'Stop Recording' : 'Start Recording'}
-              >
-                {/* Icon */}
-                {isRecording ? (
-                  <div className="icon-stop" />
-                ) : (
-                  <div className="icon-play" />
-                )}
+              <div style={{ position: 'relative' }}>
+                <VoiceActivityRing
+                  audioLevel={audioData && audioData.length > 0 ? (audioData.reduce((a, b) => a + b, 0) / audioData.length) : 0}
+                  isActive={isRecording}
+                  size={60}
+                />
+                <div
+                  className={`player-btn-main ${isRecording ? 'recording' : ''} ${targetUserId.length !== 10 ? 'disabled' : ''}`}
+                  onClick={() => {
+                    if (targetUserId.length !== 10) {
+                      setShowWarning(true);
+                      setTimeout(() => setShowWarning(false), 2000);
+                    } else if (verificationStatus !== 'processing') {
+                      toggleAudioCapture();
+                    }
+                  }}
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={handlePlayKey}
+                  aria-label={isRecording ? 'Stop Recording' : 'Start Recording'}
+                >
+                  {/* Icon */}
+                  {isRecording ? (
+                    <div className="icon-stop" />
+                  ) : (
+                    <div className="icon-play" />
+                  )}
+                </div>
               </div>
             </div>
 
@@ -321,7 +357,7 @@ const VerifyPage = () => {
             </div>
           </div>
 
-        </div>
+        </Card>
       </div>
     </div>
   );

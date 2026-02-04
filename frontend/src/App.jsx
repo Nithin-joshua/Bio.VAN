@@ -1,5 +1,6 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import HomePage from './pages/HomePage';
 import VerifyPage from './pages/VerifyPage';
 import EnrollPage from './pages/EnrollPage';
@@ -15,7 +16,7 @@ import './styles/components.css';
 
 // UI components
 import Footer from './components/ui/Footer';
-import BackgroundEffect from './components/ui/BackgroundEffect';
+import BackgroundGrid from './components/ui/BackgroundGrid';
 
 // Context providers
 import { ToastProvider } from './context/ToastContext';
@@ -28,31 +29,88 @@ import { ToastProvider } from './context/ToastContext';
  * - ToastProvider: Enables toast notifications throughout the app
  * - Router: Handles client-side routing
  */
+
+// Animated Routes Component
+const AnimatedRoutes = () => {
+  const location = useLocation();
+
+  return (
+    <AnimatePresence mode="wait">
+      <Routes location={location} key={location.pathname}>
+        {/* Landing page with feature overview */}
+        <Route path="/" element={
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.3 }}
+          >
+            <HomePage />
+          </motion.div>
+        } />
+
+        {/* Voice verification/authentication page */}
+        <Route path="/verify" element={
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.3 }}
+          >
+            <VerifyPage />
+          </motion.div>
+        } />
+
+        {/* New user enrollment with voice samples */}
+        <Route path="/enroll" element={
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.3 }}
+          >
+            <EnrollPage />
+          </motion.div>
+        } />
+
+        {/* Admin login gateway */}
+        <Route path="/admin" element={
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.3 }}
+          >
+            <AdminLoginPage />
+          </motion.div>
+        } />
+
+        {/* Admin dashboard (requires authentication) */}
+        <Route path="/admin/dashboard" element={
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.3 }}
+          >
+            <AdminPage />
+          </motion.div>
+        } />
+      </Routes>
+    </AnimatePresence>
+  );
+};
+
 function App() {
   return (
     <ToastProvider>
       <Router>
         {/* Fixed Background (remains static) */}
-        <BackgroundEffect />
+        <BackgroundGrid />
 
         <div className="app-container">
-          {/* Application routes */}
-          <Routes>
-            {/* Landing page with feature overview */}
-            <Route path="/" element={<HomePage />} />
-
-            {/* Voice verification/authentication page */}
-            <Route path="/verify" element={<VerifyPage />} />
-
-            {/* New user enrollment with voice samples */}
-            <Route path="/enroll" element={<EnrollPage />} />
-
-            {/* Admin login gateway */}
-            <Route path="/admin" element={<AdminLoginPage />} />
-
-            {/* Admin dashboard (requires authentication) */}
-            <Route path="/admin/dashboard" element={<AdminPage />} />
-          </Routes>
+          {/* Application routes with transitions */}
+          <AnimatedRoutes />
 
           {/* Persistent footer across all pages */}
           <Footer />

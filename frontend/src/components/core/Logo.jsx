@@ -1,3 +1,4 @@
+import { motion } from 'framer-motion';
 import HolographicHero from '../ui/HolographicHero';
 
 const Logo = ({ size = 'large', style = {} }) => {
@@ -11,21 +12,32 @@ const Logo = ({ size = 'large', style = {} }) => {
   if (size === 'small') hologramSize = '40px';
 
   return (
-    <div className={`logo-wrapper ${containerClass}`} style={{ display: 'flex', alignItems: 'center', gap: size === 'large' ? '0px' : '10px', ...style }}>
-      <div style={{ width: hologramSize, height: hologramSize, flexShrink: 0 }}>
+    <motion.div
+      className={`logo-wrapper ${containerClass}`}
+      style={{ display: 'flex', alignItems: 'center', gap: size === 'large' ? '0px' : '10px', ...style }}
+      initial={{ opacity: 0, scale: 0.8 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.5, ease: "easeOut" }}
+    >
+      <motion.div
+        style={{ width: hologramSize, height: hologramSize, flexShrink: 0 }}
+        initial={{ rotate: -180 }}
+        animate={{ rotate: 0 }}
+        transition={{ duration: 0.8, ease: "easeOut" }}
+      >
         <HolographicHero />
-      </div>
+      </motion.div>
 
-        <div style={{ display: 'flex', alignItems: 'center' }}>
-          <span className="logo-text">
-            <span className="logo-b">B</span>
-            <span className="logo-i">I</span>
-            <span className="logo-o">O</span>
-          </span>
-          <span className="logo-cursor">█</span>
-          <span className="logo-glitch" data-text="V">V</span>
-        </div>
-    </div>
+      <div style={{ display: 'flex', alignItems: 'center' }}>
+        <span className="logo-text">
+          <span className="logo-b">B</span>
+          <span className="logo-i">I</span>
+          <span className="logo-o">O</span>
+        </span>
+        <span className="logo-cursor">█</span>
+        <span className="logo-glitch" data-text="V">V</span>
+      </div>
+    </motion.div>
   );
 };
 

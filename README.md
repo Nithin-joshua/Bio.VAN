@@ -11,13 +11,15 @@ Bio.VAN is a next-generation decentralized voice authentication system leveragin
 * **Secure ID Generation**: Generates a unique 10-character alphanumeric ID for each user.
 * **Real-time Verification**: Instant voice matching using ECAPA-TDNN embeddings.
 * **Immersive UI**: "Cyberpunk" interface with glassmorphism, neon effects, and a **Lore Terminal** that simulates system boot sequences and live metrics.
+* **Smooth Animations**: Page transitions, logo animations, and real-time voice activity visualization using `framer-motion`.
+* **Voice Activity Ring**: Dynamic visual feedback during recording with color-shifting rings that respond to audio amplitude.
 * **Vector Database**: Uses **Milvus** for high-speed similarity search of voice embeddings.
 * **Admin Dashboard**: Monitor system health, user registry, and network traffic.
 * **Responsive Design**: Fully optimized for Desktop, Tablet, and Mobile.
 
 ## 🛠️ Tech Stack
 
-* **Frontend**: React (Vite), CSS3 (Variables, Animations), Canvas API (Waveforms).
+* **Frontend**: React (Vite), CSS3 (Variables, Animations), Canvas API (Waveforms), Framer Motion (Animations).
 * **Backend**: Python (FastAPI), SpeechBrain (Audio Processing).
 * **Database**:
   * **PostgreSQL**: Metadata storage.
@@ -72,6 +74,24 @@ npm run dev
 
 *UI will be available at <http://localhost:5173>*
 
+## ☁️ Deployment
+
+For production or server-based hosting, the recommended approach is using **Docker Compose**:
+
+1. **Configure Environment**: Ensure `.env` files (if any) are set for production values.
+2. **Build & Run**:
+
+   ```bash
+   docker-compose up -d --build
+   ```
+
+3. **Access**:
+   * Frontend: Port `5173` (or configured reverse proxy port)
+   * API: Port `8000`
+   * Milvus: Port `19530`
+
+Ensure your host firewall allows traffic on these ports if accessing remotely.
+
 ## 🖥️ System Access
 
 | Component | URL | Description |
@@ -89,7 +109,10 @@ npm run dev
 
 ## 📜 Recent Updates
 
-* **Anti-Spoofing**: Integrated spectral analysis for liveness detection.
+* **RawNet2 Anti-Spoofing**: Integrated advanced neural network (RawNet2) to detect synthetic and recorded audio attacks.
+* **Biometric Deduplication**: Prevents duplicate identities by scanning vector database for existing voiceprints before enrollment.
+* **Periodic Re-enrollment**: Enforces voice profile refresh every 90 days to account for aging and maintain accuracy.
+* **Adaptive Authentication**: Dynamically adjusts acceptance thresholds based on liveness confidence scores.
 * **ID Generation**: Implemented 10-digit secure alphanumeric ID system.
 * **Lore Terminal**: Replaced static lore text with a dynamic, animated terminal component.
 * **Tablet Support**: Improved layout for verification page on tablet devices.

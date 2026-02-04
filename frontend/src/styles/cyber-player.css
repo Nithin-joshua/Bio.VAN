@@ -1,23 +1,20 @@
 /* --- CYBER MUSIC PLAYER CARD STYLE --- */
 
 /* Main Card Container */
+/* Main Card Container */
 .cyber-player-card {
     width: 100%;
     max-width: 360px;
     /* Adjusted to Medium (300 < 360 < 380) */
-    background: rgba(10, 20, 30, 0.9);
-    border-radius: 30px;
-    /* Increased curviness */
-    padding: 1.25rem 1.25rem 1.5rem 1.25rem;
-    /* Increased bottom padding */
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.1);
+    /* Visuals handled by Card component now (Spotlight/Glass) */
     display: flex;
     flex-direction: column;
     gap: 1rem;
     /* Medium Gap */
-    backdrop-filter: blur(20px);
     position: relative;
     margin: 0 auto;
+    /* Reset padding if Card handles it, or keep if extra needed. Card has 1.5rem. Player had 1.25rem. Let's inherit Card's padding or override. */
+    height: 100%;
 }
 
 /* Header / Playlist Name */
@@ -264,13 +261,15 @@
 /* Landscape / Small Height Screens */
 @media (max-height: 650px) {
     .verify-content-wrapper {
-        align-items: flex-start !important; /* Allow scrolling from top */
+        align-items: flex-start !important;
+        /* Allow scrolling from top */
         padding-top: 2rem !important;
         padding-bottom: 2rem !important;
     }
 
     .cyber-player-card {
-        max-width: 450px; /* Allow it to be wider if shorter */
+        max-width: 450px;
+        /* Allow it to be wider if shorter */
         gap: 0.5rem;
     }
 
@@ -279,7 +278,8 @@
     }
 
     .player-header {
-        display: none; /* Hide non-essential header to save space */
+        display: none;
+        /* Hide non-essential header to save space */
     }
 
     .player-progress-bar {
@@ -315,18 +315,31 @@
         width: 100%;
         margin-top: 0.5rem;
     }
-    
+
     /* Re-stack content for horizontal layout if needed */
     .cyber-player-card {
         display: grid;
         grid-template-columns: 1fr 1fr;
         grid-template-rows: auto auto;
     }
-    
-    .player-header { grid-column: span 2; display: none; }
-    .visualizer-display { grid-row: span 1; height: 150px; }
-    .player-track-info { grid-row: span 1; }
-    .player-controls-area { grid-column: span 2; }
+
+    .player-header {
+        grid-column: span 2;
+        display: none;
+    }
+
+    .visualizer-display {
+        grid-row: span 1;
+        height: 150px;
+    }
+
+    .player-track-info {
+        grid-row: span 1;
+    }
+
+    .player-controls-area {
+        grid-column: span 2;
+    }
 }
 
 /* Icons */

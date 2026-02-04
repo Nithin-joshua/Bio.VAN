@@ -1,13 +1,52 @@
 import numpy as np
 import os
+import torch
+import torch.nn.functional as F
 try:
     from scipy.signal import welch
 except ImportError:
     welch = None
 
+from core.rawnet_model import RawNet2
+# Default RawNet2 Config (matches ASVspoof baseline)
+RAWNET_CONFIG = {
+    'nb_fil': 20,
+    'first_conv': 128,
+    'sample_rate': 16000,
+    'min_low_hz': 50,
+    'min_band_hz': 50,
+    'gru_node': 1024,
+    'nb_gru_layer': 3,
+    'nb_fc_node': 1024,
+    'nb_classes': 2  # 0: Spoof, 1: Bonafide (or vice versa depending on training)
+}
+
 class LivenessDetector:
     def __init__(self):
         self.threshold = 0.5
+        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.model = None
+        self.using_model = False
+        
+        # Load Model if weights exist
+        weight_path = os.path.join("pretrained_models", "rawnet2.pth")
+        if os.path.exists(weight_path):
+            try:
+                print(f"Loading RawNet2 from {weight_path}...")
+                self.model = RawNet2(RAWNET_CONFIG).to(self.device)
+                
+                # Load weights (handling potential key mismatches if strict=False)
+                state_dict = torch.load(weight_path, map_location=self.device)
+                self.model.load_state_dict(state_dict, strict=False)
+                self.model.eval()
+                self.using_model = True
+                print("✅ RawNet2 Loaded Successfully.")
+            except Exception as e:
+                print(f"⚠️ Failed to load RawNet2 weights: {e}")
+                print("Using heuristic fallback.")
+        else:
+            print(f"ℹ️ RawNet2 weights not found at {weight_path}")
+            print("Using heuristic fallback.")
 
     def analyze(self, audio_data: np.ndarray, sample_rate: int = 16000) -> dict:
         """
@@ -16,45 +55,103 @@ class LivenessDetector:
         """
         if len(audio_data) == 0:
              return {"is_live": False, "score": 0.0, "reason": "Empty audio"}
-
-        # 1. Energy Analysis
+        
+        # -------------------------
+        # 1. Heuristic Pre-Checks
+        # -------------------------
+        
+        # Energy Analysis
         energy = np.mean(audio_data ** 2)
         if energy < 1e-5: # Silence check
             return {"is_live": False, "score": 0.0, "reason": "Audio too silent"}
 
-        # 2. Spectral Analysis (Simple Heuristic for now)
-        # Real liveness detection needs a trained Deepfake detection model (e.g. RawNet2).
-        # Here we implement a placeholder check for 'Spectral Flatness' logic if scipy is available
-        # or simple variance check.
-        
-        score = 1.0
-        reason = "Pass"
+        heuristic_score = 1.0
+        heuristic_reason = "Pass"
 
-        # Heuristic: Synthetic speech sometimes has lower variance in energy compared to natural speech
-        # (Very simplified assumption)
+        # Variance Check
         variance = np.var(audio_data)
         if variance < 1e-4:
-             score -= 0.2
-             reason = "Low variance (possible synthesis)"
+             heuristic_score -= 0.2
+             heuristic_reason = "Low variance (possible synthesis)"
 
-        # Heuristic: Check significant frequency content
-        # (Replay often loses high freq)
+        # Frequency Check (Bass vs Treble)
         if welch:
             freqs, psd = welch(audio_data, fs=sample_rate)
-            # Check energy < 300Hz (Bass) vs > 3000Hz (Treble)
             low_freq_energy = np.sum(psd[(freqs < 300)])
             high_freq_energy = np.sum(psd[(freqs > 3000)])
             
-            if high_freq_energy < (low_freq_energy * 0.01): # Arbitrary heuristic
-                score -= 0.3
-                reason = "Muffled Audio (possible replay)"
+            if high_freq_energy < (low_freq_energy * 0.01): 
+                heuristic_score -= 0.3
+                heuristic_reason = "Muffled Audio (possible replay)"
 
-        is_live = score > 0.7
+        # -------------------------
+        # 2. RawNet2 Analysis
+        # -------------------------
+        model_score = 0.0
+        model_confidence = 0.0
+        
+        if self.using_model:
+            try:
+                # Prepare Tensor [Batch=1, Seq_Len]
+                # RawNet2 expects fixed length input (usually ~4s = 64000 samples)
+                # If too short, pad; if too long, truncate.
+                max_len = 64000
+                if len(audio_data) < max_len:
+                    # Pad with zeros (silence)
+                    pad_width = max_len - len(audio_data)
+                    audio_data = np.pad(audio_data, (0, pad_width), mode='wrap')
+                else:
+                    # Truncate to first 4 seconds
+                    audio_data = audio_data[:max_len]
+                
+                tensor_wav = torch.tensor(audio_data, dtype=torch.float32).unsqueeze(0).to(self.device)
+                
+                with torch.no_grad():
+                    # Output: [1, 2] -> logits
+                    out = self.model(tensor_wav)
+                    probs = F.softmax(out, dim=1)
+                    
+                    # Assuming Index 1 is Bonafide (Real), Index 0 is Spoof
+                    # This depends on specific training label mapping. 
+                    # Standard ASVspoof: 0=spoof, 1=bonafide usually.
+                    bonafide_prob = probs[0][1].item()
+                    
+                    model_score = bonafide_prob
+                    model_confidence = 1.0 # High confidence we have a model result
+            except Exception as e:
+                print(f"Error running RawNet2 inference: {e}")
+                self.using_model = False # Fallback to heuristic for this call
+        
+        # -------------------------
+        # 3. Ensemble Scoring
+        # -------------------------
+        
+        final_score = 0.0
+        final_reason = ""
+        
+        if self.using_model:
+            # Weighted Ensemble: 70% Model, 30% Heuristics
+            final_score = (model_score * 0.7) + (heuristic_score * 0.3)
+            
+            # If model says definitely fake (< 0.1), fail immediately
+            if model_score < 0.1:
+                final_score = model_score
+                final_reason = "AI Clone Detected (RawNet2)"
+            elif heuristic_score < 0.6:
+                final_reason = f"Signal Artifacts Detected ({heuristic_reason})"
+            else:
+                final_reason = "Human Live"
+        else:
+            final_score = heuristic_score
+            final_reason = heuristic_reason + " (Heuristic Only)"
+
+        is_live = final_score > 0.7
 
         return {
             "is_live": is_live,
-            "score": round(score, 3),
-            "reason": reason
+            "score": round(final_score, 3),
+            "reason": final_reason,
+            "method": "RawNet2+Heuristic" if self.using_model else "Heuristic"
         }
 
 # Global instance

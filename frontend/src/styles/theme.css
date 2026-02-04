@@ -92,3 +92,54 @@
   pointer-events: none;
   background: rgba(0, 0, 0, 0.3);
 }
+
+/* --- DESIGN REVAMP UTILITIES --- */
+
+/* Massive Typography */
+.text-massive {
+  font-family: var(--font-header);
+  font-size: clamp(3rem, 12vw, 9rem);
+  font-weight: 900;
+  line-height: 0.9;
+  text-transform: uppercase;
+  letter-spacing: -0.04em;
+  color: var(--text-primary);
+  margin: 0;
+  padding: 0;
+}
+
+/* Masked Gradient Text */
+.text-gradient-mask {
+  background: linear-gradient(45deg,
+      #ffffff 0%,
+      var(--neon-blue) 40%,
+      var(--neon-purple) 60%,
+      #ffffff 100%);
+  background-size: 300% 300%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  will-change: background-position;
+  animation: gradient-shift 8s ease infinite;
+}
+
+@keyframes gradient-shift {
+  0% {
+    background-position: 0% 50%;
+  }
+
+  50% {
+    background-position: 100% 50%;
+  }
+
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+/* Fluid Entrance Container */
+.fluid-container {
+  overflow: hidden;
+  position: relative;
+  width: 100%;
+}

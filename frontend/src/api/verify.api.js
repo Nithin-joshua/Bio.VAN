@@ -6,29 +6,51 @@
 
 const BASE_URL = 'http://127.0.0.1:8000';
 
-// Hardcoded user ID for demo purposes
-// In production, this would come from user login or session
-const DEMO_USER_ID = '1';
+/**
+ * Fetches a random challenge phrase from the backend.
+ * This prevents replay attacks by ensuring the user speaks a unique phrase.
+ * 
+ * @returns {Promise<string>} The challenge phrase to display
+ */
+export const fetchChallengePhrase = async () => {
+  try {
+    const response = await fetch(`${BASE_URL}/challenge`);
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch security protocol");
+    }
+
+    const data = await response.json();
+    return data.phrase;
+
+  } catch (error) {
+    console.error("Challenge fetch error:", error);
+    // Fallback for offline/error mode
+    return "Voice Authentication Requested";
+  }
+};
 
 /**
  * Authenticates a user by comparing their voice sample against their stored voiceprint.
  * Also performs anti-spoofing detection to prevent replay attacks.
  * 
  * @param {Blob} audioBlob - Recorded voice sample in webm format
+ * @param {string} userId - Target User ID
+ * @param {string} challengePhrase - The phrase the user was asked to speak
  * @returns {Promise<Object>} Verification result
- * @returns {boolean} result.verified - Whether voice matches the stored voiceprint
- * @returns {number} result.similarity_score - Confidence score (0-1, higher = better match)
- * @returns {boolean} result.spoof - Whether spoofing was detected
- * @returns {string} result.user_id - ID of the matched user
- * @throws {Error} If verification request fails
  */
-export const authenticateVoiceSample = async (audioBlob, userId) => {
+export const authenticateVoiceSample = async (audioBlob, userId, challengePhrase) => {
   const formData = new FormData();
   formData.append('file', audioBlob);
 
+  // Attach the challenge phrase so backend can verify what was spoken
+  if (challengePhrase) {
+    formData.append('challenge_phrase', challengePhrase);
+  }
+
   try {
     // Send voice sample to backend for comparison
-    const url = userId 
+    const url = userId
       ? `${BASE_URL}/verify?speaker_id=${encodeURIComponent(userId)}`
       : `${BASE_URL}/verify`;
 
@@ -38,7 +60,9 @@ export const authenticateVoiceSample = async (audioBlob, userId) => {
     });
 
     if (!response.ok) {
-      throw new Error(`Verification failed: ${response.statusText}`);
+      // Try to parse error details
+      const errData = await response.json().catch(() => ({}));
+      throw new Error(errData.message || `Verification failed: ${response.statusText}`);
     }
 
     const verificationResult = await response.json();

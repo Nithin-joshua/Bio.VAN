@@ -6,11 +6,12 @@ const Footer = () => {
             width: '100%',
             padding: '1.5rem',
             textAlign: 'center',
-            borderTop: '1px solid var(--glass-border)',
-            background: 'var(--bg-dark)',
+            borderTop: '1px solid rgba(0, 243, 255, 0.1)',
+            background: 'rgba(5, 5, 8, 0.3)', // Very transparent
             marginTop: '4rem',
             zIndex: 10,
-            backdropFilter: 'blur(5px)'
+            backdropFilter: 'blur(20px)',
+            position: 'relative'
         }}>
             <div style={{
                 fontFamily: 'var(--font-header)',

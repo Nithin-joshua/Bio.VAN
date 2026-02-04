@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import '../../styles/components.css';
 
 const SystemStatus = () => {
@@ -22,7 +23,12 @@ const SystemStatus = () => {
   }, []);
 
   return (
-    <div className="system-status-bar">
+    <motion.div
+      className="system-status-bar"
+      initial={{ y: -100, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      transition={{ duration: 0.6, ease: "easeOut", delay: 0.2 }}
+    >
       <div className="status-item">
         <span className="status-label">SYS.CPU:</span>
         <span className="status-value">{metrics.cpu.toFixed(1)}%</span>
@@ -51,7 +57,7 @@ const SystemStatus = () => {
         <span className="status-label">UPTIME:</span>
         <span className="status-value">8764h 21m</span>
       </div>
-    </div>
+    </motion.div>
   );
 };
 

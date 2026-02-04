@@ -88,7 +88,9 @@
 }
 
 @keyframes fadeIn {
-    to { opacity: 0.95; }
+    to {
+        opacity: 0.95;
+    }
 }
 
 
@@ -107,7 +109,7 @@
     letter-spacing: 1px;
     backdrop-filter: blur(4px);
     z-index: 100;
-    margin-bottom: 2rem;
+    margin-bottom: 0.5rem;
     box-shadow: 0 0 15px rgba(0, 243, 255, 0.05);
 }
 
@@ -147,7 +149,7 @@
     .mobile-hide {
         display: none;
     }
-    
+
     .system-status-bar {
         font-size: 0.65rem;
         flex-wrap: wrap;
@@ -252,8 +254,15 @@
 }
 
 @keyframes blink-opacity {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0; }
+
+    0%,
+    100% {
+        opacity: 1;
+    }
+
+    50% {
+        opacity: 0;
+    }
 }
 
 .blink-text {
