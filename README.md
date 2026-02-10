@@ -1,8 +1,8 @@
-# Bio.VAN - Secure Biometric Voice Authentication Protocol
+# Bio.V - Secure Biometric Voice Authentication Protocol
 
 ![Version](https://img.shields.io/badge/version-1.1.0-blue.svg)
 
-Bio.VAN is a next-generation decentralized voice authentication system leveraging spectral analysis and neural mesh networks to map unique vocal identifiers. Designed with a Cyberpunk aesthetic, it provides secure, privacy-focused identity verification.
+Bio.V is a next-generation decentralized voice authentication system leveraging spectral analysis and neural mesh networks to map unique vocal identifiers. Designed with a Cyberpunk aesthetic, it provides secure, privacy-focused identity verification.
 
 ## 🚀 Key Features
 
@@ -96,7 +96,7 @@ Ensure your host firewall allows traffic on these ports if accessing remotely.
 
 | Component | URL | Description |
 | ----------- | ----- | ------------- |
-| **Bio.VAN UI** | `http://localhost:5173` | Main User Interface |
+| **Bio.V UI** | `http://localhost:5173` | Main User Interface |
 | **API Docs** | `http://localhost:8000/docs` | Swagger UI for Backend API |
 | **Attu (Milvus)** | `http://localhost:8001` | Visual Manager for Vector DB |
 
@@ -106,6 +106,27 @@ Ensure your host firewall allows traffic on these ports if accessing remotely.
 * `/backend`: FastAPI application and ML logic.
 * `/models`: Pre-trained SpeechBrain models.
 * `/docker-compose.yml`: Infrastructure configuration.
+
+## 🧪 Testing
+
+The project includes a comprehensive test suite for both backend and frontend.
+
+### Backend Tests (Pytest)
+
+```bash
+cd backend
+..\myenv\Scripts\activate
+pytest  # Run all tests
+```
+
+### Frontend Tests (Vitest)
+
+```bash
+cd frontend
+npm test
+```
+
+For detailed testing procedures and reports, see **[`PROJECT_REPORT.md`](PROJECT_REPORT.md)**.
 
 ## 📜 Recent Updates
 

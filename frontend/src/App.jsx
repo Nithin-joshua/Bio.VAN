@@ -102,6 +102,7 @@ const AnimatedRoutes = () => {
 };
 
 function App() {
+  console.log("App Rendering...");
   return (
     <ToastProvider>
       <Router>

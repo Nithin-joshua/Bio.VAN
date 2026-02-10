@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import '../../styles/components.css';
 
-const LORE_TEXT = "Bio.VAN operates as a decentralized voice authentication protocol, leveraging spectral analysis to map unique vocal identifiers to immutable cryptographic ledgers. In an era where synthetic media compromises traditional security, our neural mesh ensures identity verification remains absolute, processing millions of bio-signatures daily with zero-knowledge proof verification.";
+const LORE_TEXT = "Bio.V operates as a decentralized voice authentication protocol, leveraging spectral analysis to map unique vocal identifiers to immutable cryptographic ledgers. In an era where synthetic media compromises traditional security, our neural mesh ensures identity verification remains absolute, processing millions of bio-signatures daily with zero-knowledge proof verification.";
 
 const LoreTerminal = () => {
     const [displayedText, setDisplayedText] = useState('');

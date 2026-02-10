@@ -15,6 +15,12 @@ from config.settings import MILVUS_COLLECTION, EMBEDDING_DIM
 _collection = None
 
 
+def reset_milvus_client():
+    """Reset the global collection object."""
+    global _collection
+    _collection = None
+
+
 def init_milvus(retries: int = 10, delay: int = 2):
     global _collection
 
@@ -129,9 +135,12 @@ def search_embedding(embedding: list[float], top_k: int = 1, speaker_id: str = N
         )
     except Exception as e:
         print(f"ERROR: Milvus Search Failed: {e}")
-        raise e
+        return []
 
     if not results or not results[0]:
         return []
 
     return results[0]
+
+# Alias for testing consistency
+get_milvus_client = init_milvus

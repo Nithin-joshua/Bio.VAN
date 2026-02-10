@@ -22,12 +22,27 @@ from database.milvus_client import (
     insert_embedding
 )
 
+# Helper for run_in_threadpool which needs a function
+def _load_audio_file(path):
+    return load_audio(path)
+
+def _liveness_analyze(audio):
+    return liveness_detector.analyze(audio)
+
+def _verify_challenge_wrapper(path, phrase):
+    return verify_challenge(path, phrase)
+
+def _model_extract(audio):
+    return model.extract_embedding(audio)
+
+
 from database.postgres_client import init_db, log_auth, create_user, get_user_by_voice_uuid, get_user_by_id
 from config.settings import SIMILARITY_THRESHOLD, RE_ENROLLMENT_PERIOD_DAYS
 from api.auth import router as auth_router, get_current_active_user, get_current_admin_user
 from core.security import get_password_hash
 from fastapi import Depends
 from schemas import UserResponse
+from starlette.concurrency import run_in_threadpool
 
 
 # -------------------------
@@ -104,7 +119,7 @@ async def check_liveness(file: UploadFile = File(...)):
         if not liveness["is_live"]:
              return {
                 "status": "error",
-                "message": f"Spoof dectected: {liveness['reason']}"
+                "message": f"Spoof detected: {liveness['reason']}"
             }
 
         return {
@@ -166,12 +181,12 @@ async def enroll(
             
             try:
                 # Load and Extract
-                audio = load_audio(tmp_path)
+                audio = await run_in_threadpool(_load_audio_file, tmp_path)
 
                 # Challenge Phrase Verification
                 if phrases_list and i < len(phrases_list):
                     expected_phrase = phrases_list[i]
-                    is_valid, score, transcribed = verify_challenge(tmp_path, expected_phrase)
+                    is_valid, score, transcribed = await run_in_threadpool(_verify_challenge_wrapper, tmp_path, expected_phrase)
                     if not is_valid:
                          raise HTTPException(
                             status_code=400, 
@@ -180,14 +195,14 @@ async def enroll(
                     print(f"✅ Sample {i+1} Verified: Matches '{expected_phrase}'")
 
                 # Liveness Check
-                liveness = liveness_detector.analyze(audio)
+                liveness = await run_in_threadpool(_liveness_analyze, audio)
                 if not liveness["is_live"]:
                     raise HTTPException(
                         status_code=400,
                         detail=f"Spoof detected in {file.filename}: {liveness['reason']}"
                     )
 
-                emb = model.extract_embedding(audio)
+                emb = await run_in_threadpool(_model_extract, audio)
                 embeddings.append(emb)
             finally:
                 if os.path.exists(tmp_path):
@@ -206,7 +221,7 @@ async def enroll(
         # 2. BIOMETRIC DEDUPLICATION (SECURITY CHECK)
         # ---------------------------------------------------------
         # Check if this voiceprint already exists in the system
-        existing_match = search_embedding(mean_embedding, top_k=1)
+        existing_match = await run_in_threadpool(search_embedding, mean_embedding, top_k=1)
         
         if existing_match and len(existing_match) > 0 and existing_match[0].distance > 0.85: # Strict threshold for duplicates
              print(f"⚠️ Security Alert: Duplicate Biometric Detected! Score: {existing_match[0].distance}")
@@ -233,14 +248,14 @@ async def enroll(
         voice_uuid = str(uuid.uuid4())
         
         # Create User (Upsert logic handles email conflicts)
-        user_obj = create_user(full_name, email, role, user_id=speaker_id, hashed_password=None, voice_uuid=voice_uuid)
+        user_obj = await run_in_threadpool(create_user, full_name, email, role, user_id=speaker_id, hashed_password=None, voice_uuid=voice_uuid)
         speaker_id = user_obj.id 
 
         # 4. Store Vector
-        insert_embedding(voice_uuid, mean_embedding)
+        await run_in_threadpool(insert_embedding, voice_uuid, mean_embedding)
         
         # 5. Log Action
-        log_auth(speaker_id, 1.0, "ENROLLED")
+        await run_in_threadpool(log_auth, speaker_id, 1.0, "ENROLLED")
 
         return {
             "status": "success",
@@ -306,7 +321,7 @@ async def verify(
         # If a challenge phrase was expected, verify it first using ASR
         if challenge_phrase:
             print(f"DEBUG: Verifying Challenge Phrase: '{challenge_phrase}'")
-            is_valid_phrase, phrase_score, transcribed_text = verify_challenge(tmp_path, challenge_phrase)
+            is_valid_phrase, phrase_score, transcribed_text = await run_in_threadpool(_verify_challenge_wrapper, tmp_path, challenge_phrase)
             
             if not is_valid_phrase:
                 return {
@@ -336,14 +351,17 @@ async def verify(
             }
 
         # Liveness Check (RawNet2 + Heuristic)
-        liveness = liveness_detector.analyze(audio)
+        liveness = await run_in_threadpool(_liveness_analyze, audio)
         print(f"DEBUG: Liveness Result: {liveness}")
         if not liveness["is_live"]:
-            log_auth(
-                speaker_id if speaker_id else -1,
-                0.0,
-                "SPOOF_REJECTED"
-            )
+            try:
+                log_auth(
+                    speaker_id if speaker_id else -1,
+                    0.0,
+                    "SPOOF_REJECTED"
+                )
+            except Exception as e:
+                print(f"Warning: Failed to log spoof attempt: {e}")
             return {
                 "verified": False,
                 "similarity_score": 0.0,
@@ -352,7 +370,7 @@ async def verify(
                 "message": f"Spoof detected: {liveness['reason']}"
             }
 
-        embedding = model.extract_embedding(audio)
+        embedding = await run_in_threadpool(_model_extract, audio)
 
         # If speaker_id is provided, we filter by it
         print(f"DEBUG: Searching with speaker_id={speaker_id}")
@@ -360,7 +378,7 @@ async def verify(
         milvus_filter_id = None
         if speaker_id:
              # Resolve Public User ID -> Internal Voice UUID
-             user_obj = get_user_by_id(speaker_id)
+             user_obj = await run_in_threadpool(get_user_by_id, speaker_id)
              if user_obj and user_obj.voice_uuid:
                  milvus_filter_id = user_obj.voice_uuid
                  print(f"DEBUG: Resolved Public ID {speaker_id} -> Voice UUID {milvus_filter_id}")
@@ -378,7 +396,7 @@ async def verify(
                  # If user doesn't exist, we can't match them.
                  milvus_filter_id = "NON_EXISTENT_UUID" 
 
-        results = search_embedding(embedding, speaker_id=milvus_filter_id)
+        results = await run_in_threadpool(search_embedding, embedding, speaker_id=milvus_filter_id)
         
         verified = False
         similarity_score = 0.0
@@ -419,7 +437,7 @@ async def verify(
                 # Now we must ask Postgres: "Who is UUID X?"
                 
                 # 1. Resolve Identity from Postgres
-                user = get_user_by_voice_uuid(matched_uuid)
+                user = await run_in_threadpool(get_user_by_voice_uuid, matched_uuid)
                 
                 if user:
                     matched_user_id = user.id
@@ -446,11 +464,15 @@ async def verify(
                  print(f"DEBUG: Score {similarity_score:.3f} failed to meet threshold {dynamic_threshold:.3f}")
 
         # Log Result
-        log_auth(
-            matched_user_id if matched_user_id else "UNKNOWN",
-            similarity_score,
-            "VERIFIED" if verified else "REJECTED"
-        )
+        try:
+            await run_in_threadpool(
+                log_auth,
+                matched_user_id if matched_user_id else "UNKNOWN",
+                similarity_score,
+                "VERIFIED" if verified else "REJECTED"
+            )
+        except Exception as e:
+            print(f"Warning: Failed to log auth attempt: {e}")
         
         return {
             "verified": verified,

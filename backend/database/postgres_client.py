@@ -114,3 +114,10 @@ def get_user_by_id(user_id: str):
         return session.query(User).filter(User.id == user_id).first()
     finally:
         session.close()
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()

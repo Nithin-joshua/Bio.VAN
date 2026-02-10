@@ -71,7 +71,7 @@ const HeroSection = () => {
                 <p className="hero-description" style={{ fontSize: '1.2rem', marginBottom: '2rem', color: 'var(--text-secondary)' }}>
                     Forget passwords. Your voice is the only key you need.
                     <br />
-                    <span style={{ color: 'var(--neon-blue)', fontWeight: 'bold' }}>Bio.VAN</span> encodes your unique vocal resonance into an unbreakable digital signature.
+                    <span style={{ color: 'var(--neon-blue)', fontWeight: 'bold' }}>Bio.V</span> encodes your unique vocal resonance into an unbreakable digital signature.
                 </p>
 
                 <div className="home-actions" style={{ justifyContent: 'flex-end', gap: '1rem', display: 'flex' }}>
