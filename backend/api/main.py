@@ -317,42 +317,31 @@ async def verify(
         tmp_path = tmp.name
 
     try:
-        # 1. Challenge-Response Check (Anti-Replay)
-        # If a challenge phrase was expected, verify it first using ASR
-        if challenge_phrase:
-            print(f"DEBUG: Verifying Challenge Phrase: '{challenge_phrase}'")
-            is_valid_phrase, phrase_score, transcribed_text = await run_in_threadpool(_verify_challenge_wrapper, tmp_path, challenge_phrase)
-            
-            if not is_valid_phrase:
-                return {
-                    "verified": False,
-                    "similarity_score": 0.0,
-                    "matched_speaker_id": None,
-                    "error_code": "CHALLENGE_FAILED",
-                    "message": f"Phrase Mismatch. You said: '{transcribed_text}'. Expected: '{challenge_phrase}'"
-                }
-            print("✅ Challenge Phrase Verified")
+        # 1. Load Audio
+        audio = await run_in_threadpool(_load_audio_file, tmp_path)
 
-        audio = load_audio(tmp_path)
-        
-        # Duration Check
+        # 2. Duration Check
         duration = librosa.get_duration(y=audio, sr=16000)
         print(f"DEBUG: Audio Duration: {duration}s")
-        
-        # Import MIN_AUDIO_DURATION if not already available
         from config.settings import MIN_AUDIO_DURATION
         
         if duration < MIN_AUDIO_DURATION:
-            return {
+             return {
                 "verified": False,
                 "similarity_score": 0.0,
                 "matched_speaker_id": None,
+                "error_code": "DURATION_TOO_SHORT",
                 "message": f"Audio too short ({duration:.2f}s). Please speak for at least {MIN_AUDIO_DURATION} seconds."
             }
 
-        # Liveness Check (RawNet2 + Heuristic)
+        # ---------------------------------------------------------
+        # 3. Liveness Check (RawNet2 + Heuristic) - PRIORITIZED
+        # ---------------------------------------------------------
+        # We check liveness FIRST to detect AI voices immediately.
         liveness = await run_in_threadpool(_liveness_analyze, audio)
         print(f"DEBUG: Liveness Result: {liveness}")
+        
+        # If definitive spoof, reject immediately
         if not liveness["is_live"]:
             try:
                 log_auth(
@@ -367,8 +356,30 @@ async def verify(
                 "similarity_score": 0.0,
                 "matched_speaker_id": None,
                 "error_code": "SPOOF_DETECTED",
-                "message": f"Spoof detected: {liveness['reason']}"
+                "message": f"Spoof detected: {liveness['reason']}",
+                "spoof": True, # Explicit flag for frontend
+                "liveness_metrics": liveness
             }
+
+        # ---------------------------------------------------------
+        # 4. Challenge-Response Check (Anti-Replay)
+        # ---------------------------------------------------------
+        # If a challenge phrase was expected, verify it using ASR
+        if challenge_phrase:
+            print(f"DEBUG: Verifying Challenge Phrase: '{challenge_phrase}'")
+            is_valid_phrase, phrase_score, transcribed_text = await run_in_threadpool(_verify_challenge_wrapper, tmp_path, challenge_phrase)
+            
+            if not is_valid_phrase:
+                return {
+                    "verified": False,
+                    "similarity_score": 0.0,
+                    "matched_speaker_id": None,
+                    "error_code": "CHALLENGE_FAILED",
+                    "message": f"Phrase Mismatch. You said: '{transcribed_text}'. Expected: '{challenge_phrase}'",
+                    "spoof": False, # Passed liveness, failed phrase
+                    "liveness_metrics": liveness
+                }
+            print("✅ Challenge Phrase Verified")
 
         embedding = await run_in_threadpool(_model_extract, audio)
 
@@ -384,16 +395,6 @@ async def verify(
                  print(f"DEBUG: Resolved Public ID {speaker_id} -> Voice UUID {milvus_filter_id}")
              else:
                  print(f"DEBUG: Unknown User ID {speaker_id} or no voice profile.")
-                 # If user asks to verify against ID X but ID X doesn't exist, we should probably fail early 
-                 # or let it search globally? 
-                 # Security-wise: Fail early looks better, but let's stick to existing logic 
-                 # which is 'filter if provided'. If not found, filters by None?
-                 # Actually if speaker_id is provided but valid UUID not found, we effectively can't verify 
-                 # against THAT user.
-                 # Let's pass a dummy filter or handle it.
-                 # If we pass None, it searches EVERYONE, which might be a bypass if 
-                 # attacker knows ID exists but has no UUID? No.
-                 # If user doesn't exist, we can't match them.
                  milvus_filter_id = "NON_EXISTENT_UUID" 
 
         results = await run_in_threadpool(search_embedding, embedding, speaker_id=milvus_filter_id)
@@ -454,7 +455,9 @@ async def verify(
                                 "similarity_score": float(similarity_score),
                                 "matched_speaker_id": user.id,
                                 "error_code": "VOICE_EXPIRED",
-                                "message": f"Biometric profile expired ({days_since_enrollment} days old). Please re-enroll."
+                                "message": f"Biometric profile expired ({days_since_enrollment} days old). Please re-enroll.",
+                                "spoof": False,
+                                "liveness_metrics": liveness
                              }
 
                     verified = True
@@ -478,7 +481,9 @@ async def verify(
             "verified": verified,
             "similarity_score": float(similarity_score),
             "matched_speaker_id": matched_user_id,
-            "message": "Verification successful" if verified else "Voice mismatch detected"
+            "message": "Verification successful" if verified else "Voice mismatch detected",
+            "spoof": False,
+            "liveness_metrics": liveness
         }
 
     except Exception as e:

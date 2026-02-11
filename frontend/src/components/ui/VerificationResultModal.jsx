@@ -10,11 +10,31 @@ const VerificationResultModal = ({ result, onClose }) => {
         return () => clearTimeout(timer);
     }, []);
 
+    // Logic to determine Liveliness Status
+    let livelinessText = 'PENDING';
+    let livelinessColor = 'var(--text-secondary)';
+
+    if (result.liveness_metrics) {
+        if (result.liveness_metrics.is_live) {
+            livelinessText = 'CONFIRMED';
+            livelinessColor = 'var(--neon-green)';
+        } else {
+            livelinessText = 'FAILED (SPOOF)';
+            livelinessColor = 'var(--neon-red)';
+        }
+    } else if (result.verified) {
+        // If verified is true, it implicitly passed liveness (legacy support)
+        livelinessText = 'CONFIRMED';
+        livelinessColor = 'var(--neon-green)';
+    } else {
+        // Not verified, no liveness metrics -> Check failed before liveness (e.g. Duration)
+        livelinessText = 'NOT CHECKED';
+        livelinessColor = 'var(--text-secondary)';
+    }
+
     const borderColor = result.verified ? 'var(--neon-green)' : 'var(--neon-red)';
     const shadowColor = result.verified ? 'rgba(0, 255, 0, 0.2)' : 'rgba(255, 0, 0, 0.2)';
     const headerText = result.verified ? 'ACCESS GRANTED' : (result.spoof ? 'SECURITY ALERT' : 'ACCESS DENIED');
-    const livelinessText = result.spoof ? 'FAILED (SPOOF)' : 'CONFIRMED';
-    const livelinessColor = result.spoof ? 'var(--neon-red)' : 'var(--neon-green)';
 
     return (
         <div className="modal-overlay">
@@ -35,7 +55,7 @@ const VerificationResultModal = ({ result, onClose }) => {
                 <div className="modal-grid">
                     <div className="grid-label">TARGET ID:</div>
                     <div className="grid-value" style={{ fontFamily: 'var(--font-mono)' }}>
-                        {result.targetId || result.user_id || 'UNKNOWN'}
+                        {result.matched_speaker_id || result.targetId || result.user_id || 'UNKNOWN'}
                     </div>
 
                     <div className="grid-label">CONFIDENCE:</div>
