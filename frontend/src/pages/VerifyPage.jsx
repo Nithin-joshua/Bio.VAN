@@ -48,14 +48,17 @@ const VerifyPage = () => {
   };
 
   // Initialize system on component mount
+  // Simulates a secure boot sequence and fetches the challenge phrase
   useEffect(() => {
     const initSystem = async () => {
+      // Simulate terminal initialization
       const timer = setTimeout(() => {
         appendTerminalLog('SYSTEM INITIALIZED. STANDBY.');
         appendTerminalLog('OBTAINING SECURITY CHALLENGE...');
       }, 100);
 
-      // Fetch Challenge
+      // Fetch dynamic Challenge Phrase from backend
+      // This prevents replay attacks by ensuring the user says a fresh phrase
       const phrase = await fetchChallengePhrase();
       setChallengePhrase(phrase);
       appendTerminalLog(`PROTOCOL: "${phrase}"`);
@@ -101,22 +104,27 @@ const VerifyPage = () => {
   /**
    * Sends voice sample to backend for authentication.
    * Handles three possible outcomes: verified, rejected, or spoof detected.
+   * 
+   * Flow:
+   * 1. UI Simulation (Encrypting/Transmitting logs)
+   * 2. API Call (authenticateVoiceSample)
+   * 3. Result Handling based on backend response metrics
    */
   const executeAuthenticationProtocol = async (audioBlob) => {
     try {
-      // Cinematic processing sequence
+      // Cinematic processing sequence - adds tension and immersion
       appendTerminalLog('INITIATING HANDSHAKE...');
-      await delay(400); // Simulate network
+      await delay(400); // Simulate network latency
 
       appendTerminalLog('ENCRYPTING PACKET LOAD...');
       await delay(400);
 
       appendTerminalLog('TRANSMITTING TO BIO-CORE...');
 
-      // Actual API Call
+      // Actual API Call - Transmits the blob to the /verify endpoint
       const result = await authenticateVoiceSample(audioBlob, targetUserId, challengePhrase);
 
-      // Simulate analysis steps
+      // Simulate analysis steps (Feature extraction logs)
       appendTerminalLog('DATA RECEIVED. DECRYPTING...');
       await delay(400);
 
@@ -132,11 +140,16 @@ const VerifyPage = () => {
       setSimilarityScore(result.similarity_score);
       setResultDetails(result);
 
+      // --- LOGIC BRANCHING BASED ON RESULT ---
+
       if (result.spoof) {
+        // CASE: Liveness Check Failed (RawNet2 detected generated audio)
         appendTerminalLog('!!! SECURITY VIOLATION: SYNTHETIC SIGNATURE !!!');
         setVerificationStatus('spoof');
         showToast('Artificial signature detected.', 'error');
+
       } else if (result.error_code === 'VOICE_EXPIRED') {
+        // CASE: Voice profile is too old (> 90 days)
         appendTerminalLog('ERROR 403: BIOMETRIC PROFILE EXPIRED');
         setVerificationStatus('expired');
         showToast(result.message, 'warning');
@@ -145,15 +158,19 @@ const VerifyPage = () => {
         setTimeout(() => {
           navigate('/enroll');
         }, 4000);
+
       } else if (result.verified) {
+        // CASE: Success (High Similarity > Threshold)
         appendTerminalLog(`IDENTITY VERIFIED. CONFIDENCE: ${(result.similarity_score * 100).toFixed(2)}%`);
         setVerificationStatus('verified');
+
       } else {
+        // CASE: Failure (Low Similarity - Wrong Person)
         appendTerminalLog(`ACCESS DENIED. CONFIDENCE: ${(result.similarity_score * 100).toFixed(2)}%`);
         setVerificationStatus('rejected');
       }
 
-      // Show result modal after a brief moment
+      // Show detailed result modal after a brief moment
       setTimeout(() => setShowResultModal(true), 500);
 
     } catch (error) {

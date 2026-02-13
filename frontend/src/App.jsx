@@ -19,7 +19,8 @@ import Footer from './components/ui/Footer';
 import BackgroundGrid from './components/ui/BackgroundGrid';
 
 // Context providers
-import { ToastProvider } from './context/ToastContext';
+// Context providers
+import { ToastProvider } from './context/ToastContext'; // Provides global toast notifications
 
 /**
  * Main Application Component
@@ -31,18 +32,20 @@ import { ToastProvider } from './context/ToastContext';
  */
 
 // Animated Routes Component
+// Handles route transitions using Framer Motion
 const AnimatedRoutes = () => {
   const location = useLocation();
 
   return (
     <AnimatePresence mode="wait">
+      {/* Routes are keyed by pathname to trigger re-renders on navigation */}
       <Routes location={location} key={location.pathname}>
         {/* Landing page with feature overview */}
         <Route path="/" element={
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
+            initial={{ opacity: 0, y: 20 }} // Start slightly below and transparent
+            animate={{ opacity: 1, y: 0 }}  // Animate to center and fully visible
+            exit={{ opacity: 0, y: -20 }}   // Exit slightly above and transparent
             transition={{ duration: 0.3 }}
           >
             <HomePage />
@@ -106,7 +109,7 @@ function App() {
   return (
     <ToastProvider>
       <Router>
-        {/* Fixed Background (remains static) */}
+        {/* Fixed Background (remains static across all pages for consistency) */}
         <BackgroundGrid />
 
         <div className="app-container">

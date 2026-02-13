@@ -30,13 +30,13 @@ export const useRecorder = () => {
       });
 
       setStream(audioStream);
-      
+
       // Use optimal mime type (same as VoiceRecorder.jsx)
       let mimeType = 'audio/webm';
       if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
-          mimeType = 'audio/webm;codecs=opus';
+        mimeType = 'audio/webm;codecs=opus';
       }
-      
+
       audioRecorder.current = new MediaRecorder(audioStream, { mimeType });
       recordedAudioChunks.current = [];
 
@@ -55,7 +55,11 @@ export const useRecorder = () => {
     }
   }, []);
 
-  // Helper to convert AudioBuffer to WAV Blob
+  /**
+   * Helper to convert AudioBuffer to WAV Blob.
+   * Browsers natively record in WebM/Ogg, but our backend ML models expect WAV.
+   * This manual conversion writes the RIFF/WAVE headers and PCM data.
+   */
   const audioBufferToWav = (buffer) => {
     const numOfChan = buffer.numberOfChannels;
     const length = buffer.length * numOfChan * 2 + 44;
@@ -88,30 +92,30 @@ export const useRecorder = () => {
 
     // write interleaved data
     for (i = 0; i < buffer.numberOfChannels; i++)
-        channels.push(buffer.getChannelData(i));
+      channels.push(buffer.getChannelData(i));
 
     while (pos < buffer.length) {
-        for (i = 0; i < numOfChan; i++) {
-            // clamp
-            sample = Math.max(-1, Math.min(1, channels[i][pos]));
-            // scale to 16-bit signed int
-            sample = (0.5 + sample < 0 ? sample * 32768 : sample * 32767) | 0;
-            view.setInt16(offset, sample, true);
-            offset += 2;
-        }
-        pos++;
+      for (i = 0; i < numOfChan; i++) {
+        // clamp
+        sample = Math.max(-1, Math.min(1, channels[i][pos]));
+        // scale to 16-bit signed int
+        sample = (0.5 + sample < 0 ? sample * 32768 : sample * 32767) | 0;
+        view.setInt16(offset, sample, true);
+        offset += 2;
+      }
+      pos++;
     }
 
     return new Blob([view], { type: "audio/wav" });
 
     function setUint16(data) {
-        view.setUint16(offset, data, true);
-        offset += 2;
+      view.setUint16(offset, data, true);
+      offset += 2;
     }
 
     function setUint32(data) {
-        view.setUint32(offset, data, true);
-        offset += 4;
+      view.setUint32(offset, data, true);
+      offset += 4;
     }
   };
 
@@ -131,44 +135,47 @@ export const useRecorder = () => {
         // Use the same mimeType as creation
         let mimeType = 'audio/webm';
         if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
-            mimeType = 'audio/webm;codecs=opus';
+          mimeType = 'audio/webm;codecs=opus';
         }
 
         // Combine all recorded chunks into a single blob
         const webmBlob = new Blob(recordedAudioChunks.current, { type: mimeType });
 
-        // Convert to WAV
+        // Convert to WAV (Linear PCM)
         try {
-            const arrayBuffer = await webmBlob.arrayBuffer();
-            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
-            const wavBlob = audioBufferToWav(audioBuffer);
-            
-            // Cleanup context
-            audioCtx.close();
-            
-            // Important: Stop all tracks to release the microphone
-            // This turns off the recording indicator light in the browser/OS
-            if (stream) {
-              stream.getTracks().forEach(track => track.stop());
-            }
+          const arrayBuffer = await webmBlob.arrayBuffer();
+          // Decode the compressed WebM audio into raw PCM data
+          const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
 
-            setStream(null);
-            setIsRecording(false);
-            resolve(wavBlob);
+          // Encode raw PCM to WAV container
+          const wavBlob = audioBufferToWav(audioBuffer);
+
+          // Cleanup context to free system audio resources
+          audioCtx.close();
+
+          // Important: Stop all tracks to release the microphone (Hardware LED off)
+          // This turns off the recording indicator light in the browser/OS
+          if (stream) {
+            stream.getTracks().forEach(track => track.stop());
+          }
+
+          setStream(null);
+          setIsRecording(false);
+          resolve(wavBlob);
         } catch (err) {
-            console.error("Error converting to WAV:", err);
-            // Fallback to webm if conversion fails, though backend might reject it
-            if (stream) {
-                stream.getTracks().forEach(track => track.stop());
-            }
-            setStream(null);
-            setIsRecording(false);
-            resolve(webmBlob);
+          console.error("Error converting to WAV:", err);
+          // Fallback to webm if conversion fails, though backend might reject it
+          if (stream) {
+            stream.getTracks().forEach(track => track.stop());
+          }
+          setStream(null);
+          setIsRecording(false);
+          resolve(webmBlob);
         }
       };
 
-      // Trigger the stop event
+      // Trigger the stop event on the MediaRecorder
       audioRecorder.current.stop();
     });
   }, [stream]);

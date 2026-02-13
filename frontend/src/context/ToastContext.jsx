@@ -15,11 +15,10 @@ export const ToastProvider = ({ children }) => {
     const [toasts, setToasts] = useState([]);
 
     /**
-     * Displays a new toast notification.
-     * Automatically dismisses after 5 seconds.
+     * Helper to remove a specific toast from state by ID.
+     * This is memoized to prevent unnecessary re-renders of child components.
      * 
-     * @param {string} message - Text to display in the notification
-     * @param {string} type - Notification type: 'info', 'success', 'warning', or 'error'
+     * @param {number} notificationId - Unique timestamp-based ID of the toast to remove
      */
     /**
      * Manually dismisses a toast notification.
@@ -32,23 +31,27 @@ export const ToastProvider = ({ children }) => {
     }, []);
 
     /**
-     * Displays a new toast notification.
-     * Automatically dismisses after 5 seconds.
+     * Public API to show a toast.
+     * Adds the new toast to the array and schedules its auto-dismissal.
      * 
-     * @param {string} message - Text to display in the notification
-     * @param {string} type - Notification type: 'info', 'success', 'warning', or 'error'
+     * @param {string} message - Content to display
+     * @param {string} type - Visual style ('info', 'success', 'warning', 'error')
      */
     const displayNotification = useCallback((message, type = 'info') => {
-        // Generate unique ID using timestamp (simple but effective for this use case)
+        // Generate unique ID using timestamp (simple but effective for this client-side use case)
         const notificationId = Date.now();
+
+        // Use functional state update to ensure we're working with the latest toast list
         setToasts(prev => [...prev, { id: notificationId, message, type }]);
 
         // Auto-dismiss after 5 seconds to prevent notification buildup
+        // This cleaning is crucial for long-running sessions
         setTimeout(() => {
             dismissNotification(notificationId);
         }, 5000);
     }, [dismissNotification]);
 
+    // Expose the showToast function to the context consumers
     return (
         <ToastContext.Provider value={{ showToast: displayNotification }}>
             {children}

@@ -9,6 +9,7 @@ except ImportError:
 
 from core.rawnet_model import RawNet2
 # Default RawNet2 Config (matches ASVspoof baseline)
+# Architecture parameters for the anti-spoofing model
 RAWNET_CONFIG = {
     'nb_fil': 20,
     'first_conv': 128,
@@ -30,6 +31,10 @@ class LivenessDetector:
         
         # Load Model if weights exist
         weight_path = os.path.join("pretrained_models", "rawnet2.pth")
+        abs_path = os.path.abspath(weight_path)
+        print(f"DEBUG: Current CWD: {os.getcwd()}")
+        print(f"DEBUG: Looking for RawNet2 weights at: {abs_path}")
+        
         if os.path.exists(weight_path):
             try:
                 print(f"Loading RawNet2 from {weight_path}...")
@@ -53,36 +58,55 @@ class LivenessDetector:
         Analyze audio for liveness.
         Returns a dictionary with 'is_live' (bool) and 'score' (float).
         """
+        import time
+        start_time = time.time()
         if len(audio_data) == 0:
+             print("DEBUG: Liveness Check Failed - Empty Audio")
              return {"is_live": False, "score": 0.0, "reason": "Empty audio"}
         
         # -------------------------
         # 1. Heuristic Pre-Checks
         # -------------------------
+        # Fast, rule-based checks to catch obvious errors or low-quality attacks
+        # before running the expensive deep learning model.
         
-        # Energy Analysis
+        # Energy Analysis: Catch silent or near-silent audio
         energy = np.mean(audio_data ** 2)
-        if energy < 1e-5: # Silence check
+        print(f"DEBUG: Audio Energy: {energy}")
+        if energy < 1e-6: # Lowered silence check (was 1e-5)
+            print("DEBUG: Audio too silent")
             return {"is_live": False, "score": 0.0, "reason": "Audio too silent"}
 
         heuristic_score = 1.0
         heuristic_reason = "Pass"
 
-        # Variance Check
+        # Variance Check: Synthetic speech sometimes has unnaturally low variance
         variance = np.var(audio_data)
-        if variance < 1e-4:
-             heuristic_score -= 0.2
+        print(f"DEBUG: Audio Variance: {variance}")
+        if variance < 1e-5: # Lowered variance threshold (was 1e-4)
+             heuristic_score -= 0.1 # Reduced penalty (was 0.2)
              heuristic_reason = "Low variance (possible synthesis)"
+             print(f"DEBUG: Low Variance Detected: {variance}")
 
         # Frequency Check (Bass vs Treble)
+        # Replayed audio often lacks high/low frequency details due to speaker limitations
         if welch:
             freqs, psd = welch(audio_data, fs=sample_rate)
             low_freq_energy = np.sum(psd[(freqs < 300)])
             high_freq_energy = np.sum(psd[(freqs > 3000)])
             
-            if high_freq_energy < (low_freq_energy * 0.01): 
-                heuristic_score -= 0.3
+            # Prevent division by zero
+            if low_freq_energy == 0:
+                ratio = 0
+            else:
+                ratio = high_freq_energy / low_freq_energy
+                
+            print(f"DEBUG: Freq Analysis - Low: {low_freq_energy:.6f}, High: {high_freq_energy:.6f}, Ratio: {ratio:.6f}")
+            
+            if ratio < 0.001: # Lowered high freq requirement (was 0.01)
+                heuristic_score -= 0.2 # Reduced penalty (was 0.3)
                 heuristic_reason = "Muffled Audio (possible replay)"
+                print("DEBUG: Muffled Audio Detected")
 
         # -------------------------
         # 2. RawNet2 Analysis
@@ -118,6 +142,7 @@ class LivenessDetector:
                     
                     model_score = bonafide_prob
                     model_confidence = 1.0 # High confidence we have a model result
+                    print(f"DEBUG: RawNet2 Bonafide Probability: {bonafide_prob:.4f}")
             except Exception as e:
                 print(f"Error running RawNet2 inference: {e}")
                 self.using_model = False # Fallback to heuristic for this call
@@ -130,14 +155,16 @@ class LivenessDetector:
         final_reason = ""
         
         if self.using_model:
-            # Weighted Ensemble: 70% Model, 30% Heuristics
-            final_score = (model_score * 0.7) + (heuristic_score * 0.3)
+            # Weighted Ensemble: 80% Model, 20% Heuristics
+            # The Deep Learning model is the primary authority, but heuristics act as a sanity check.
+            final_score = (model_score * 0.8) + (heuristic_score * 0.2)
             
-            # If model says definitely fake (< 0.1), fail immediately
+            # Critical Failure Overrides
+            # If model says definitely fake (< 0.1), fail immediately regardless of heuristics
             if model_score < 0.1:
                 final_score = model_score
                 final_reason = "AI Clone Detected (RawNet2)"
-            elif heuristic_score < 0.6:
+            elif heuristic_score < 0.5: # Lowered (was 0.6)
                 final_reason = f"Signal Artifacts Detected ({heuristic_reason})"
             else:
                 final_reason = "Human Live"
@@ -145,7 +172,11 @@ class LivenessDetector:
             final_score = heuristic_score
             final_reason = heuristic_reason + " (Heuristic Only)"
 
-        is_live = final_score > 0.7
+        # Lowered passing threshold (was 0.60)
+        is_live = final_score > 0.55
+        
+        end_time = time.time()
+        print(f"DEBUG: Final Liveness Score: {final_score:.4f} (Threshold: 0.55) -> {is_live}. Time: {end_time - start_time:.4f}s")
 
         return {
             "is_live": is_live,

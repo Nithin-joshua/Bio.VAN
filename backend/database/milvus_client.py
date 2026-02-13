@@ -125,6 +125,11 @@ def search_embedding(embedding: list[float], top_k: int = 1, speaker_id: str = N
         expr = f"speaker_id == '{speaker_id}'"
 
     try:
+        if speaker_id:
+             print(f"DEBUG: Milvus Search (Speaker ID: {speaker_id})")
+        else:
+             print(f"DEBUG: Milvus Search (Global Scan)")
+
         results = collection.search(
             data=[embedding],
             anns_field="embedding",
@@ -138,9 +143,22 @@ def search_embedding(embedding: list[float], top_k: int = 1, speaker_id: str = N
         return []
 
     if not results or not results[0]:
+        print("DEBUG: Milvus - No matches found.")
         return []
 
+    print(f"DEBUG: Milvus - Found {len(results[0])} matches. Top Score: {results[0][0].distance}")
     return results[0]
 
 # Alias for testing consistency
 get_milvus_client = init_milvus
+
+def delete_embedding(voice_uuid: str):
+    collection = init_milvus()
+    try:
+        # Delete based on primary key (speaker_id in Milvus matches voice_uuid from Postgres)
+        expr = f"speaker_id == '{voice_uuid}'"
+        collection.delete(expr)
+        print(f"DEBUG: Deleted embedding for UUID {voice_uuid}")
+    except Exception as e:
+        print(f"ERROR: Failed to delete embedding for UUID {voice_uuid}: {e}")
+

@@ -21,12 +21,17 @@ def get_db():
         db.close()
 
 async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)):
+    """
+    Dependency: Decodes the JWT token and retrieves the user from the DB.
+    Used to protect routes that require authentication.
+    """
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
     try:
+        # Decode and Validate JWT Signature
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         email: str = payload.get("sub")
         if email is None:
@@ -52,6 +57,10 @@ async def get_current_admin_user(current_user: User = Depends(get_current_user))
 
 @router.post("/token")
 async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    """
+    OAuth2 compatible token login, get an access token for future requests.
+    Validates email/password against the Postgres database.
+    """
     user = db.query(User).filter(User.email == form_data.username).first()
     if not user or not user.hashed_password or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(
@@ -60,6 +69,7 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
             headers={"WWW-Authenticate": "Bearer"},
         )
     
+    # Generate JWT with expiration
     access_token_expires = timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = create_access_token(
         data={"sub": user.email, "role": user.role},

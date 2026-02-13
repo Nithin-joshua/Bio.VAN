@@ -1,8 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import '../../styles/components.css';
 
+// Narrative text displayed in the terminal to build immersion
 const LORE_TEXT = "Bio.V operates as a decentralized voice authentication protocol, leveraging spectral analysis to map unique vocal identifiers to immutable cryptographic ledgers. In an era where synthetic media compromises traditional security, our neural mesh ensures identity verification remains absolute, processing millions of bio-signatures daily with zero-knowledge proof verification.";
 
+/**
+ * Atmospheric Terminal Component
+ * Displays a typing-effect text block and random system metrics.
+ * Purely cosmetic - adds to the "Cyberpunk" aesthetic.
+ */
 const LoreTerminal = () => {
     const [displayedText, setDisplayedText] = useState('');
     const [metrics, setMetrics] = useState({
@@ -11,39 +17,41 @@ const LoreTerminal = () => {
         node: 'TOKYO-03'
     });
 
-    // Typing effect
+    // EFFECT: Typewriter Animation
+    // Recursively adds characters to the display state with random delays
     useEffect(() => {
         let index = 0;
         let timeoutId;
-        setDisplayedText(''); // Reset
+        setDisplayedText(''); // Reset on mount
 
         const typeChar = () => {
             if (index < LORE_TEXT.length) {
                 setDisplayedText(prev => prev + LORE_TEXT.charAt(index));
                 index++;
 
-                // Random typing speed variation for realism
+                // Random typing speed variation for realism (20ms - 50ms)
                 const delay = Math.random() * 30 + 20;
                 timeoutId = setTimeout(typeChar, delay);
             }
         };
 
-        // Start typing after a small delay
+        // Start typing after a small initial delay
         timeoutId = setTimeout(typeChar, 500);
 
         return () => clearTimeout(timeoutId);
     }, []);
 
-    // Random metrics update simulation
+    // EFFECT: Random Metric Simulation
+    // periodically updates the footer stats (Latency, Encryption, Node) to make the UI feel "live"
     useEffect(() => {
         const interval = setInterval(() => {
             // Randomly fluctuate latency
             const newLatency = Math.floor(Math.random() * 20) + 10; // 10-30ms range
 
-            // Occasionally "re-key" encryption
+            // Occasionally "re-key" encryption (visual flair)
             const encryptionStatus = Math.random() > 0.95 ? 'RE-KEYING...' : 'QUANTUM-256';
 
-            // Occasionally switch nodes
+            // Occasionally switch server nodes
             const nodes = ['TOKYO-03', 'LONDON-01', 'NY-NET-05', 'SINGAPORE-09'];
             const currentNode = Math.random() > 0.98 ? nodes[Math.floor(Math.random() * nodes.length)] : metrics.node;
 

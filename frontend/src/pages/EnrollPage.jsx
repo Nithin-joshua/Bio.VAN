@@ -7,6 +7,7 @@ import Logo from '../components/core/Logo';
 import Select from '../components/core/Select';
 import Card from '../components/ui/Card';
 import SystemStatus from '../components/ui/SystemStatus';
+import AlertModal from '../components/ui/AlertModal';
 import { PHONETIC_PARAGRAPHS } from '../data/phonetics';
 import { registerUserVoiceprint, checkVoiceLiveness, fetchChallengePhrases } from '../api/enroll.api';
 import '../styles/components.css';
@@ -54,14 +55,26 @@ class ErrorBoundary extends Component {
 const EnrollPage = () => {
   const { showToast } = useToast();
 
-  // Track current step in the enrollment process (0-4)
+  // Track current step in the enrollment process (0=Profile, 1-3=Samples, 4=Success)
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmittingToServer, setIsSubmittingToServer] = useState(false);
   const [generatedUserId, setGeneratedUserId] = useState(null);
 
-  // Audio Hooks
+  // Alert Modal State
+  const [alertState, setAlertState] = useState({
+    show: false,
+    title: '',
+    message: '',
+    type: 'error'
+  });
+
+  const closeAlert = () => {
+    setAlertState({ ...alertState, show: false });
+  };
+
+  // Audio Hooks - Abstraction for Web Audio API
   const { isRecording, stream, startRecording, stopRecording } = useRecorder();
-  const audioData = useWaveformAnalyzer(stream);
+  const audioData = useWaveformAnalyzer(stream); // For visualizer
 
   // User enrollment data collected across all steps
   const [enrollmentData, setEnrollmentData] = useState({
@@ -83,17 +96,19 @@ const EnrollPage = () => {
   }, []);
 
   /**
-   * Toggles recording state for enrollment
+   * Toggles recording state for enrollment.
+   * Handles the flow of: Start -> Stop -> Validate -> Save/Reject
    */
   const toggleRecording = async (sampleId) => {
     if (isRecording) {
-      // Stop recording
+      // 1. Stop recording and get audio blob
       const audioBlob = await stopRecording();
 
       if (audioBlob) {
         showToast("Verifying sample integrity...", "info");
 
-        // --- REAL-TIME VALIDATION ---
+        // 2. Real-time Liveness Check (anti-spoofing)
+        // Helps ensure user isn't playing back a recording
         try {
           const check = await checkVoiceLiveness(audioBlob);
 
@@ -104,6 +119,7 @@ const EnrollPage = () => {
             showToast(`Sample Rejected: ${check.message}`, "error");
           }
         } catch (err) {
+          // Fallback if ML service is offline (Development Mode)
           showToast("Verification Unavailable. Proceeding locally.", "warning");
           saveVoiceSample(audioBlob, sampleId);
         }
@@ -116,39 +132,61 @@ const EnrollPage = () => {
 
   /**
    * Advances to the next step in the enrollment process.
+   * Handles final submission when completing the last sample.
    */
   const proceedToNextStep = async () => {
-    if (currentStep === 3) {
-      // Final step: Submit all collected data
+    if (currentStep === 0) {
+      // Step 0: Profile Validation
       if (!enrollmentData.fullName || !enrollmentData.email) {
-        showToast("Security Protocol Error: Missing Credentials.", "error");
-        setCurrentStep(0);
+        showToast("Please fill in all fields", "error");
+        return;
+      }
+      setCurrentStep(1);
+    } else if (currentStep >= 1 && currentStep <= 3) {
+      // Steps 1-3: Recording Validation
+      const sampleIndex = currentStep - 1;
+      const currentSampleId = PHONETIC_PARAGRAPHS[sampleIndex].id;
+
+      if (!enrollmentData.recordings[currentSampleId]) {
+        showToast("Please record the sample before proceeding", "error");
         return;
       }
 
-      const missingSamples = PHONETIC_PARAGRAPHS.filter(p => !enrollmentData.recordings[p.id]);
-      if (missingSamples.length > 0) {
-        showToast(`Missing Samples: ${missingSamples.map(s => s.label).join(', ')}`, "error");
-        return;
-      }
-
-      setIsSubmittingToServer(true);
-      try {
-        // Include challenge phrases in submission
-        const payload = { ...enrollmentData, challengePhrases };
-        const response = await registerUserVoiceprint(payload);
-        if (response && response.user_id) {
-          setGeneratedUserId(response.user_id);
-        }
-        showToast('Registration Successful. Identity Encoded.', 'success');
+      if (currentStep < 3) {
+        // Just move to next sample
         setCurrentStep(prev => prev + 1);
-      } catch (error) {
-        showToast(error.message || 'Registration failed.', 'error');
-      } finally {
-        setIsSubmittingToServer(false);
+      } else {
+        // Step 3: Final Submission
+        setIsSubmittingToServer(true);
+        try {
+          const payload = { ...enrollmentData, challengePhrases };
+          const response = await registerUserVoiceprint(payload);
+
+          if (response && response.user_id) {
+            setGeneratedUserId(response.user_id);
+            showToast("Identity Securely Encoded.", "success");
+            setCurrentStep(4); // Move to Success
+          }
+        } catch (err) {
+          console.error("Enrollment Error:", err);
+          setIsSubmittingToServer(false);
+
+          // Check for Security Alert (Duplicate)
+          const errorMessage = err.message || "Enrollment Failed";
+          const isDuplicate = errorMessage.includes("Biometric Security Alert") || (err.response && err.response.status === 409);
+
+          if (isDuplicate) {
+            setAlertState({
+              show: true,
+              title: "SECURITY ALERT",
+              message: "Duplicate Biometric Detected! Voice signature matches an existing registered identity.",
+              type: "error"
+            });
+          } else {
+            showToast(errorMessage, "error");
+          }
+        }
       }
-    } else {
-      setCurrentStep(prev => prev + 1);
     }
   };
 
@@ -360,6 +398,14 @@ const EnrollPage = () => {
   return (
     <ErrorBoundary>
       <div className="page-container" style={{ justifyContent: 'center', alignItems: 'center' }}>
+        {alertState.show && (
+          <AlertModal
+            title={alertState.title}
+            message={alertState.message}
+            type={alertState.type}
+            onClose={closeAlert}
+          />
+        )}
         <SystemStatus />
         {/* Page header with logo and title */}
         {currentStep === 0 && (

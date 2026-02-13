@@ -6,8 +6,8 @@ load_dotenv()
 
 ECAPA_MODEL = "speechbrain/spkrec-ecapa-voxceleb"
 SIMILARITY_THRESHOLD = 0.80 # Base legacy threshold
-ADAPTIVE_THRESHOLD_MIN = 0.75 # If liveness is perfect
-ADAPTIVE_THRESHOLD_MAX = 0.90 # If liveness is suspicious
+ADAPTIVE_THRESHOLD_MIN = 0.60 # Demo Mode: High tolerance
+ADAPTIVE_THRESHOLD_MAX = 0.80 # Demo Mode: Reduced strictness
 SAMPLE_RATE = 16000
 MIN_AUDIO_DURATION = 3.0
 

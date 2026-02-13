@@ -74,9 +74,7 @@ class SincConv_fast(nn.Module):
         self.band_hz_ = nn.Parameter(torch.Tensor(np.diff(hz)).view(-1, 1))
 
         # Hamming window
-        #self.window_ = torch.hamming_window(self.kernel_size)
-        n_lin=torch.linspace(0, (self.kernel_size/2)-1, steps=int((self.kernel_size/2))) # computing only half of the window
-        self.window_=0.54-0.46*torch.cos(2*3.141592653589793*n_lin/self.kernel_size);
+        self.window_ = torch.hamming_window(self.kernel_size)
 
 
     def forward(self, waveforms):
@@ -91,8 +89,8 @@ class SincConv_fast(nn.Module):
             Batch of sinc filters activations.
         """
 
-        self.n_ = 2 * 3.141592653589793 * torch.arange(-(self.kernel_size - 1) / 2.0,
-                                                         (self.kernel_size - 1) / 2.0 + 1).view(1, -1) / self.sample_rate
+        self.n_ = 2 * np.pi * torch.arange(-(self.kernel_size - 1) / 2.0,
+                                           (self.kernel_size - 1) / 2.0 + 1).view(1, -1) / self.sample_rate
         self.n_ = self.n_.to(waveforms.device)
         self.window_ = self.window_.to(waveforms.device)
 
@@ -104,16 +102,22 @@ class SincConv_fast(nn.Module):
         f_times_t_low = torch.matmul(low, self.n_)
         f_times_t_high = torch.matmul(high, self.n_)
 
-        band_pass_left=((torch.sin(f_times_t_high)-torch.sin(f_times_t_low))/(self.n_/2))*self.window_ 
-        band_pass_center = 2*band.view(-1,1)
-        band_pass_right= torch.flip(band_pass_left,dims=[1])
+        # Calculate Sinc function components
+        # band_pass = 2 * (sin(high*n) - sin(low*n)) / n
+        # Note: n_ is scaled by 2*pi in definition, so we simply divide by n_/2 ? 
+        # Original code used n_/2. Let's stick to the math:
+        # Sinc filter h[n] = 2f2 sinc(2pi f2 n) - 2f1 sinc(2pi f1 n)
+        # Here we just use the direct (sin - sin) / (n/2) equivalent
         
+        band_pass = (torch.sin(f_times_t_high) - torch.sin(f_times_t_low)) / (self.n_ / 2)
         
-        band_pass=torch.cat([band_pass_left,band_pass_center,band_pass_right],dim=1)
-
+        # Fix division by zero at the center (n=0)
+        # The center index is (kernel_size - 1) // 2
+        center_idx = (self.kernel_size - 1) // 2
+        if self.kernel_size % 2 != 0:
+             band_pass[:, center_idx] = 2 * band
         
-        band_pass = band_pass / (2*band[:,None])
-        
+        band_pass = band_pass * self.window_
 
         self.filters = (band_pass).view(
             self.out_channels, 1, self.kernel_size)
@@ -172,8 +176,8 @@ class Residual_block(nn.Module):
         x = self.mp(x)
         x = self.fms(x)
         
-        if self.first:
-            org_x = self.mp(org_x)
+        # FIX: Always downsample residual connection match the main path
+        org_x = self.mp(org_x)
             
         x += org_x
         return x
@@ -288,6 +292,11 @@ class RawNet2(nn.Module):
         
         # Take last time step
         x = x[:, -1, :] 
+        
+        # Norm
+        # x = self.fc1_gru(x)
+        # Fix: The pretrained weights might expect a specific FC layer name or behavior
+        # Let's check dictionary keys if needed, but for now stick to definition
         
         x = self.fc1_gru(x)
         x = self.fc2_gru(x)

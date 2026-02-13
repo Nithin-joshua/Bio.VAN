@@ -108,6 +108,23 @@ def log_auth(speaker_id, score, decision):
     session.commit()
     session.close()
 
+def delete_user(user_id: str):
+    session = SessionLocal()
+    try:
+        user = session.query(User).filter(User.id == user_id).first()
+        if not user:
+            return None
+        
+        voice_uuid = user.voice_uuid
+        session.delete(user)
+        session.commit()
+        return voice_uuid
+    except Exception as e:
+        session.rollback()
+        raise e
+    finally:
+        session.close()
+
 def get_user_by_id(user_id: str):
     session = SessionLocal()
     try:

@@ -165,13 +165,21 @@ async def enroll(
         except Exception as e:
             print(f"DEBUG: Failed to parse challenge phrases: {e}")
 
-    # 1. PROCESS AUDIO & EXTRACT EMBEDDINGS (FIRST)
+    # ---------------------------------------------------------
+    # 1. PROCESS AUDIO & EXTRACT EMBEDDINGS
+    # ---------------------------------------------------------
+    # We process 3 distinct samples to build a robust voice profile.
+    # Each sample is checked for:
+    #   a. File Format (WAV/WEBM/etc)
+    #   b. Challenge Phrase Compliance (Anti-Replay)
+    #   c. Liveness (Anti-Spoofing via RawNet2)
     samples = [sample_1, sample_2, sample_3]
     embeddings = []
 
     try:
         for i, file in enumerate(samples):
             if not file.filename.lower().endswith(('.wav', '.webm', '.ogg', '.mp3')):
+                # Fast fail for invalid formats
                 pass 
             
             # Write to temp
@@ -186,8 +194,11 @@ async def enroll(
                 # Challenge Phrase Verification
                 if phrases_list and i < len(phrases_list):
                     expected_phrase = phrases_list[i]
+                    print(f"DEBUG: Verifying Sample {i+1} against phrase '{expected_phrase}'")
                     is_valid, score, transcribed = await run_in_threadpool(_verify_challenge_wrapper, tmp_path, expected_phrase)
+                    print(f"DEBUG: Transcription: '{transcribed}' (Score: {score})")
                     if not is_valid:
+                         print(f"DEBUG: Phrase Mismatch for Sample {i+1}. Expected: '{expected_phrase}', Got: '{transcribed}'")
                          raise HTTPException(
                             status_code=400, 
                             detail=f"Verification Failed for Sample {i+1}: Phrase Mismatch. You said: '{transcribed}'"
@@ -196,7 +207,9 @@ async def enroll(
 
                 # Liveness Check
                 liveness = await run_in_threadpool(_liveness_analyze, audio)
+                print(f"DEBUG: Sample {i+1} Liveness: {liveness}")
                 if not liveness["is_live"]:
+                    print(f"DEBUG: Spoof detected in sample {i+1}: {liveness['reason']}")
                     raise HTTPException(
                         status_code=400,
                         detail=f"Spoof detected in {file.filename}: {liveness['reason']}"
@@ -233,8 +246,8 @@ async def enroll(
         # ---------------------------------------------------------
         # 3. CREATE IDENTITY
         # ---------------------------------------------------------
-        
-        # Generator User ID Logic
+        # Generate a semi-random Speaker ID (Human Readable)
+        # Format: AAA1234567 (3 Letters + 7 Alphanumeric)
         clean_name = re.sub(r'[^a-zA-Z]', '', full_name)
         if not clean_name:
             clean_name = string.ascii_letters 
@@ -244,17 +257,24 @@ async def enroll(
         suffix = ''.join(random.choices(suffix_chars, k=7))
         speaker_id = prefix + suffix
         
-        # Generate new anonymous UUID
+        # Generate new anonymous UUID for Vector DB (Privacy)
+        # The Vector DB only knows this UUID, not the User's Name.
         voice_uuid = str(uuid.uuid4())
         
-        # Create User (Upsert logic handles email conflicts)
+        # Create User in Relational DB (Postgres)
+        # Handles user profile storage and links to the generated IDs
         user_obj = await run_in_threadpool(create_user, full_name, email, role, user_id=speaker_id, hashed_password=None, voice_uuid=voice_uuid)
         speaker_id = user_obj.id 
 
-        # 4. Store Vector
+        # ---------------------------------------------------------
+        # 4. STORE VECTOR DATA
+        # ---------------------------------------------------------
+        # Insert the averaged 192-d vector into Milvus
         await run_in_threadpool(insert_embedding, voice_uuid, mean_embedding)
         
-        # 5. Log Action
+        # ---------------------------------------------------------
+        # 5. COMMIT AUDIT LOG
+        # ---------------------------------------------------------
         await run_in_threadpool(log_auth, speaker_id, 1.0, "ENROLLED")
 
         return {
@@ -264,6 +284,7 @@ async def enroll(
         }
 
     except HTTPException as he:
+        print(f"DEBUG: HTTPException in enroll: {he.detail}")
         raise he
     except Exception as e:
         print(f"DEBUG: Enrollment Logic Failed: {e}")
@@ -277,10 +298,41 @@ async def enroll(
 # Admin: List Users
 # -------------------------
 @app.get("/users", response_model=List[UserResponse])
-def list_users():
+def list_users(current_user: UserResponse = Depends(get_current_admin_user)):
     from database.postgres_client import get_all_users
     users = get_all_users()
     return users
+
+
+@app.delete("/users/{user_id}")
+async def delete_user_endpoint(
+    user_id: str,
+    current_user: UserResponse = Depends(get_current_admin_user)
+):
+    from database.postgres_client import delete_user
+    from database.milvus_client import delete_embedding
+    
+    print(f"DEBUG: Admin {current_user.id} requested deletion of user {user_id}")
+    
+    try:
+        # Delete from Postgres
+        voice_uuid = await run_in_threadpool(delete_user, user_id)
+        
+        if not voice_uuid:
+             raise HTTPException(status_code=404, detail="User not found")
+
+        # Delete from Milvus (Vector DB)
+        if voice_uuid:
+             await run_in_threadpool(delete_embedding, voice_uuid)
+
+        print(f"✅ User {user_id} and associated vector data deleted.")
+        return {"status": "success", "message": f"User {user_id} deleted successfully."}
+
+    except HTTPException as he:
+        raise he
+    except Exception as e:
+        print(f"ERROR: Failed to delete user {user_id}: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 # -------------------------
@@ -411,21 +463,23 @@ async def verify(
             print(f"DEBUG: Match Found in Vector DB. UUID={matched_uuid}, Score={similarity_score}")
             
             # ---------------------------------------------------------
-            # ADAPTIVE SECURITY LOGIC
+            # FAST ADAPTIVE THRESHOLDING
             # ---------------------------------------------------------
-            # Adjust threshold based on Liveness Confidence.
-            # Liveness Score range: 0.0 (Spoof) -> 1.0 (Real)
-            
-            # Linear Interpolation for dynamic threshold:
-            # if liveness=1.0 -> thresh=0.75 (easier)
-            # if liveness=0.6 -> thresh=0.88 (harder)
+            # We dynamically adjust the required similarity score based on the
+            # confidence of the Liveness check.
+            #
+            # Logic:
+            # - High Liveness Confidence -> Standard Threshold (0.75)
+            # - Low Liveness Confidence -> High Threshold (0.88) required
+            #
+            # This balances usability (False Rejection Rate) with security (False Acceptance Rate).
             from config.settings import ADAPTIVE_THRESHOLD_MIN, ADAPTIVE_THRESHOLD_MAX
             
-            # Clamp liveness score
+            # Clamp liveness score to valid 0.0-1.0 range
             live_score = max(0.0, min(1.0, liveness["score"]))
             
-            # Invert: Higher score = Lower threshold required
-            # Formula: Min + (Max - Min) * (1 - Liveness)
+            # Linear Interpolation Formula:
+            # Threshold = Min + (Max - Min) * (1 - Liveness)
             dynamic_threshold = ADAPTIVE_THRESHOLD_MIN + (ADAPTIVE_THRESHOLD_MAX - ADAPTIVE_THRESHOLD_MIN) * (1.0 - live_score)
             
             print(f"DEBUG: Adaptive Thresholding. Liveness={live_score:.2f} -> Thresh={dynamic_threshold:.2f}")

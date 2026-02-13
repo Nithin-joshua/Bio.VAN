@@ -52,10 +52,11 @@ export const useWaveformAnalyzer = (stream) => {
 
       // Get time domain data (amplitude over time) instead of frequency data
       // This gives us the classic waveform oscilloscope look
+      // dataArray values range from 0 to 255 (128 is silence)
       analyserRef.current.getByteTimeDomainData(dataArray);
 
       // Create a new Uint8Array to trigger React re-render
-      // (React won't detect mutations to the same array reference)
+      // (React won't detect mutations to the same array reference, so a copy is needed)
       setAudioData(new Uint8Array(dataArray));
 
       // Schedule next frame

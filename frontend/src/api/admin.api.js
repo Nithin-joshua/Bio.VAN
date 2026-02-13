@@ -36,3 +36,27 @@ export const fetchRegisteredUsers = async (authToken) => {
         throw error;
     }
 };
+
+/**
+ * Deletes a registered user from the system.
+ * Requires admin authentication token.
+ */
+export const deleteUser = async (userId, authToken) => {
+    try {
+        const response = await fetch(`${BASE_URL}/users/${userId}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': `Bearer ${authToken}`
+            }
+        });
+
+        if (!response.ok) {
+            throw new Error(`Failed to delete user: ${response.statusText}`);
+        }
+
+        return await response.json();
+    } catch (error) {
+        console.error('Admin: Failed to delete user:', error);
+        throw error;
+    }
+};

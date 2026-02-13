@@ -4,7 +4,7 @@ import Button from '../components/core/Button';
 import Logo from '../components/core/Logo';
 import Card from '../components/ui/Card';
 import SystemStatus from '../components/ui/SystemStatus';
-import { fetchRegisteredUsers } from '../api/admin.api';
+import { fetchRegisteredUsers, deleteUser } from '../api/admin.api';
 
 /**
  * Administrative Dashboard Page
@@ -35,7 +35,7 @@ const AdminPage = () => {
                 const registryData = await fetchRegisteredUsers(adminToken);
                 setPersonnelRegistry(registryData);
             } catch (err) {
-                setAccessError('Failed to load user registry. Session may represent a security risk or be expired.');
+                setAccessError(`Failed to load user registry: ${err.message}`);
                 // Redirect on authentication failures
                 if (err.message && (err.message.includes('401') || err.message.includes('403'))) {
                     navigate('/admin');
@@ -56,10 +56,27 @@ const AdminPage = () => {
         navigate('/admin');
     };
 
+    /**
+     * Deletes a user from the system.
+     */
+    const handleDeleteUser = async (userId) => {
+        if (window.confirm(`Are you sure you want to PERMANENTLY delete user ${userId}? This cannot be undone.`)) {
+            try {
+                const adminToken = localStorage.getItem('admin_token');
+                await deleteUser(userId, adminToken);
+
+                // Refresh list
+                setPersonnelRegistry(prev => prev.filter(u => u.id !== userId));
+            } catch (err) {
+                alert(`Failed to delete user: ${err.message}`);
+            }
+        }
+    };
+
     return (
         <div className="page-container">
             <SystemStatus />
-            
+
             {/* Dashboard Header */}
             <div style={{ marginBottom: '2rem', textAlign: 'center', position: 'relative', width: '100%', maxWidth: '800px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                 <Logo size="medium" style={{ justifyContent: 'center' }} />
@@ -94,6 +111,7 @@ const AdminPage = () => {
                                             <th style={{ padding: '1rem', color: 'var(--primary-color)' }}>EMAIL</th>
                                             <th style={{ padding: '1rem', color: 'var(--primary-color)' }}>ROLE</th>
                                             <th style={{ padding: '1rem', color: 'var(--primary-color)' }}>STATUS</th>
+                                            <th style={{ padding: '1rem', color: 'var(--primary-color)', textAlign: 'center' }}>ACTIONS</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -103,16 +121,25 @@ const AdminPage = () => {
                                                 <td style={{ padding: '1rem', fontWeight: 'bold' }}>{user.full_name}</td>
                                                 <td style={{ padding: '1rem' }}>{user.email}</td>
                                                 <td style={{ padding: '1rem' }}>
-                                                    <span style={{ 
-                                                        padding: '0.2rem 0.5rem', 
-                                                        border: '1px solid var(--neon-blue)', 
+                                                    <span style={{
+                                                        padding: '0.2rem 0.5rem',
+                                                        border: '1px solid var(--neon-blue)',
                                                         borderRadius: '4px',
-                                                        fontSize: '0.8rem' 
+                                                        fontSize: '0.8rem'
                                                     }}>
                                                         {user.role || 'PERSONNEL'}
                                                     </span>
                                                 </td>
                                                 <td style={{ padding: '1rem', color: 'var(--neon-green)' }}>ACTIVE</td>
+                                                <td style={{ padding: '1rem', textAlign: 'center' }}>
+                                                    <Button
+                                                        variant="danger"
+                                                        onClick={() => handleDeleteUser(user.id)}
+                                                        style={{ fontSize: '0.7rem', padding: '0.3rem 0.8rem', minWidth: 'auto' }}
+                                                    >
+                                                        DELETE
+                                                    </Button>
+                                                </td>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -125,12 +152,12 @@ const AdminPage = () => {
                 {/* System Activity Feed (Mock) */}
                 <div>
                     <Card title="NETWORK ACTIVITY" status="LIVE" delay={0.3}>
-                         <div style={{ padding: '1rem', height: '300px', overflow: 'hidden', position: 'relative' }}>
-                             <div className="data-particle" style={{ left: '20%', animationDelay: '0s' }}></div>
-                             <div className="data-particle" style={{ left: '50%', animationDelay: '2s' }}></div>
-                             <div className="data-particle" style={{ left: '80%', animationDelay: '5s' }}></div>
-                             
-                             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
+                        <div style={{ padding: '1rem', height: '300px', overflow: 'hidden', position: 'relative' }}>
+                            <div className="data-particle" style={{ left: '20%', animationDelay: '0s' }}></div>
+                            <div className="data-particle" style={{ left: '50%', animationDelay: '2s' }}></div>
+                            <div className="data-particle" style={{ left: '80%', animationDelay: '5s' }}></div>
+
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
                                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                                     <span>&gt; INCOMING_PACKET_2394</span>
                                     <span style={{ color: 'var(--neon-blue)' }}>VERIFIED</span>
@@ -148,13 +175,13 @@ const AdminPage = () => {
                                     <span>DONE</span>
                                 </div>
                                 <div style={{ marginTop: '1rem', borderTop: '1px solid rgba(255,255,255,0.1)', paddingTop: '0.5rem' }}>
-                                     <div style={{ marginBottom: '0.5rem' }}>BANDWIDTH USAGE:</div>
-                                     <div style={{ width: '100%', height: '4px', background: 'rgba(255,255,255,0.1)' }}>
-                                         <div style={{ width: '45%', height: '100%', background: 'var(--neon-blue)' }}></div>
-                                     </div>
-                                 </div>
-                             </div>
-                         </div>
+                                    <div style={{ marginBottom: '0.5rem' }}>BANDWIDTH USAGE:</div>
+                                    <div style={{ width: '100%', height: '4px', background: 'rgba(255,255,255,0.1)' }}>
+                                        <div style={{ width: '45%', height: '100%', background: 'var(--neon-blue)' }}></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </Card>
                 </div>
             </div>

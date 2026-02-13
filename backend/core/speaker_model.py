@@ -21,21 +21,32 @@ class ECAPAModel:
 
     def extract_embedding(self, audio_np: np.ndarray) -> list:
         """
-        Returns: List[float] of length EMBEDDING_DIM
+        Converts raw audio waveform into a fixed-dimensional vector (embedding).
+        Uses SpeechBrain's ECAPA-TDNN pretrained model.
+        
+        Args:
+            audio_np: 1D numpy array of audio samples (16kHz)
+            
+        Returns:
+             List[float]: 192-dimensional vector representation of the voice
         """
 
         # 1️⃣ numpy → torch (shape: [1, T])
+        # Add batch dimension (Batch Size = 1)
         wav = torch.tensor(audio_np, dtype=torch.float32).unsqueeze(0)
 
         # 2️⃣ SpeechBrain embedding (shape: [1, 1, D] or [1, D])
+        # Runs the forward pass of the neural network
         with torch.no_grad():
             emb = self.model.encode_batch(wav)
 
         # 3️⃣ FORCE 1-D vector
+        # Flatten to simple 1D array of features
         emb = emb.squeeze()          # removes batch dims
         emb = emb.cpu().numpy()      # numpy array (D,)
 
         # 4️⃣ Convert to pure Python list of floats
+        # JSON serialization requires native Python types
         return emb.astype(float).tolist()
 
 # Singleton instance

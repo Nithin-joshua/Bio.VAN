@@ -19,29 +19,27 @@ const AdminLoginPage = () => {
         setError('');
 
         try {
-            // Bypass backend authentication for now as password field is removed
-            // const formData = new FormData();
-            // formData.append('username', email);
-            // formData.append('password', password);
+            const formData = new FormData();
+            formData.append('username', email);
+            formData.append('password', password);
 
-            // const response = await fetch('http://127.0.0.1:8000/token', {
-            //     method: 'POST',
-            //     body: formData,
-            // });
+            const response = await fetch('http://127.0.0.1:8000/token', {
+                method: 'POST',
+                body: formData,
+            });
 
-            // if (!response.ok) {
-            //     throw new Error('Invalid credentials');
-            // }
+            if (!response.ok) {
+                const errData = await response.json();
+                throw new Error(errData.detail || 'Invalid credentials');
+            }
 
-            // const data = await response.json();
-            // localStorage.setItem('admin_token', data.access_token);
-
-            // Set dummy token for admin access
-            localStorage.setItem('admin_token', 'bypass_token');
+            const data = await response.json();
+            localStorage.setItem('admin_token', data.access_token);
             navigate('/admin/dashboard');
 
-        } catch {
-            setError('ACCESS DENIED: Invalid credentials');
+        } catch (err) {
+            console.error("Login Error:", err);
+            setError(err.message || 'ACCESS DENIED: Invalid credentials');
         } finally {
             setLoading(false);
         }

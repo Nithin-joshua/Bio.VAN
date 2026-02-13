@@ -24,6 +24,10 @@ const VoiceRecorder = ({ onRecordingComplete, label = "Voice Sample" }) => {
 
     // Corrected visualize implementation to avoid undefined refs inside the function definition
     // Re-defining to ensure scope is correct.
+    /**
+     * Initializes the real-time audio visualizer.
+     * Connects the microphone stream to an AnalyserNode and renders the waveform on a canvas.
+     */
     const startVisualizer = (stream) => {
         if (!audioContextRef.current) {
             audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
@@ -32,7 +36,7 @@ const VoiceRecorder = ({ onRecordingComplete, label = "Voice Sample" }) => {
         analyserRef.current = audioCtx.createAnalyser();
         sourceRef.current = audioCtx.createMediaStreamSource(stream);
         sourceRef.current.connect(analyserRef.current);
-        analyserRef.current.fftSize = 2048;
+        analyserRef.current.fftSize = 2048; // High resolution for smooth waveform
 
         // Trigger the loop
         const canvas = canvasRef.current;
@@ -40,23 +44,26 @@ const VoiceRecorder = ({ onRecordingComplete, label = "Voice Sample" }) => {
         const bufferLength = analyserRef.current.frequencyBinCount;
         const dataArray = new Uint8Array(bufferLength);
 
+        // Animation Loop
         const draw = () => {
             if (!canvas) return;
             animationRef.current = requestAnimationFrame(draw);
             analyserRef.current.getByteTimeDomainData(dataArray);
 
+            // Clear canvas with transparent fade effect
             canvasCtx.fillStyle = 'rgba(10, 10, 20, 0.2)';
             canvasCtx.fillRect(0, 0, canvas.width, canvas.height);
 
+            // Draw Waveform Line
             canvasCtx.lineWidth = 2;
-            canvasCtx.strokeStyle = '#00f3ff';
+            canvasCtx.strokeStyle = '#00f3ff'; // Neon Blue
             canvasCtx.beginPath();
 
             const sliceWidth = canvas.width * 1.0 / bufferLength;
             let x = 0;
 
             for (let i = 0; i < bufferLength; i++) {
-                const v = dataArray[i] / 128.0;
+                const v = dataArray[i] / 128.0; // Normalize 0-255 to 0-2 (1 is center)
                 const y = v * canvas.height / 2;
 
                 if (i === 0) {
@@ -137,16 +144,16 @@ const VoiceRecorder = ({ onRecordingComplete, label = "Voice Sample" }) => {
     const startRecording = async () => {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-            
+
             // Use optimal mime type
             let mimeType = 'audio/webm';
             if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
                 mimeType = 'audio/webm;codecs=opus';
             }
-            
+
             mediaRecorderRef.current = new MediaRecorder(stream, { mimeType });
 
-            startVisualizer(stream);
+            startVisualizer(stream); // Connect stream to canvas
 
             mediaRecorderRef.current.ondataavailable = (e) => {
                 if (e.data.size > 0) {
@@ -154,6 +161,7 @@ const VoiceRecorder = ({ onRecordingComplete, label = "Voice Sample" }) => {
                 }
             };
 
+            // Handler for when recording stops
             mediaRecorderRef.current.onstop = async () => {
                 const webmBlob = new Blob(chunksRef.current, { type: mimeType });
                 chunksRef.current = [];
@@ -165,22 +173,22 @@ const VoiceRecorder = ({ onRecordingComplete, label = "Voice Sample" }) => {
                     return;
                 }
 
-                // Convert to WAV
+                // Convert to WAV (Crucial step for backend compatibility)
                 try {
                     const arrayBuffer = await webmBlob.arrayBuffer();
-                    
+
                     if (!audioContextRef.current) {
                         audioContextRef.current = new (window.AudioContext || window.webkitAudioContext)();
                     }
-                    
-                    // Ensure context is running
+
+                    // Ensure context is running (Autoplay policies sometimes suspend it)
                     if (audioContextRef.current.state === 'suspended') {
                         await audioContextRef.current.resume();
                     }
 
                     const audioBuffer = await audioContextRef.current.decodeAudioData(arrayBuffer);
                     const wavBlob = audioBufferToWav(audioBuffer);
-                    
+
                     const url = URL.createObjectURL(wavBlob);
                     setAudioURL(url);
                     if (onRecordingComplete) onRecordingComplete(wavBlob);
@@ -189,7 +197,7 @@ const VoiceRecorder = ({ onRecordingComplete, label = "Voice Sample" }) => {
                     setError(`Processing failed: ${err.message || "Unknown error"}. Please retake.`);
                 }
 
-                // Stop all tracks
+                // Stop all tracks to release microphone hardware
                 stream.getTracks().forEach(track => track.stop());
                 if (animationRef.current) cancelAnimationFrame(animationRef.current);
             };
