@@ -68,6 +68,24 @@ const VerifyPage = () => {
     initSystem();
   }, []);
 
+  // Auto-expire challenge if user does not start recording within 10 seconds
+  useEffect(() => {
+    if (!challengePhrase || verificationStatus !== 'idle') {
+      return;
+    }
+
+    const timer = setTimeout(async () => {
+      if (verificationStatus === 'idle') {
+        const phrase = await fetchChallengePhrase();
+        setChallengePhrase(phrase);
+        appendTerminalLog('CHALLENGE EXPIRED. ISSUING NEW PROTOCOL.');
+        appendTerminalLog(`PROTOCOL: "${phrase}"`);
+      }
+    }, 10000);
+
+    return () => clearTimeout(timer);
+  }, [challengePhrase, verificationStatus]);
+
   /**
    * Toggles microphone recording on/off.
    * When stopping, automatically triggers voice authentication.
@@ -147,6 +165,18 @@ const VerifyPage = () => {
         appendTerminalLog('!!! SECURITY VIOLATION: SYNTHETIC SIGNATURE !!!');
         setVerificationStatus('spoof');
         showToast('Artificial signature detected.', 'error');
+
+      } else if (result.error_code === 'MIC_TOO_FAR') {
+        // CASE: User is too far from the microphone / signal too weak
+        appendTerminalLog('ERROR: MIC DISTANCE OUT OF RANGE. MOVE CLOSER AND RETRY.');
+        setVerificationStatus('too_far');
+        showToast(result.message || 'Voice signal too weak or distant. Move closer to the microphone.', 'warning');
+
+      } else if (result.error_code === 'AUDIO_QUALITY_LOW') {
+        // CASE: Audio quality is too poor for a reliable decision
+        appendTerminalLog('ERROR: AUDIO QUALITY BELOW SECURITY THRESHOLD.');
+        setVerificationStatus('bad_audio');
+        showToast(result.message || 'Audio quality too low. Check your microphone and environment.', 'warning');
 
       } else if (result.error_code === 'VOICE_EXPIRED') {
         // CASE: Voice profile is too old (> 90 days)
@@ -245,7 +275,13 @@ const VerifyPage = () => {
           {/* 2. "ALBUM ART" - VISUALIZER / TERMINAL HYBRID */}
           <div className="visualizer-display">
             {/* STATE A: PROCESSING TERMINAL */}
-            {(verificationStatus === 'processing' || verificationStatus === 'verified' || verificationStatus === 'rejected' || verificationStatus === 'spoof' || verificationStatus === 'expired') ? (
+            {(verificationStatus === 'processing'
+              || verificationStatus === 'verified'
+              || verificationStatus === 'rejected'
+              || verificationStatus === 'spoof'
+              || verificationStatus === 'expired'
+              || verificationStatus === 'too_far'
+              || verificationStatus === 'bad_audio') ? (
               <div className="player-terminal">
                 <div className="player-terminal-header">
                   &gt;_ SYSTEM_LOG

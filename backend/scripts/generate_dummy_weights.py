@@ -29,8 +29,8 @@ def generate_user_weights():
     save_path = os.path.join(save_dir, 'rawnet2.pth')
     
     torch.save(model.state_dict(), save_path)
-    print(f"✅ Dummy weights saved to: {save_path}")
-    print("⚠️ NOTE: These are random weights. The model will run but will NOT detect spoofing accurately.")
+    print(f"Dummy weights saved to: {save_path}")
+    print("NOTE: These are random weights. The model will run but will NOT detect spoofing accurately.")
 
 if __name__ == "__main__":
     generate_user_weights()

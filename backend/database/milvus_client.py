@@ -78,12 +78,12 @@ def init_milvus(retries: int = 10, delay: int = 2):
                 _collection = Collection(MILVUS_COLLECTION)
 
             _collection.load()
-            print("✅ Milvus connected & collection loaded")
+            print("Milvus connected and collection loaded")
             return _collection
 
         except Exception as e:
             last_error = e
-            print(f"⏳ Milvus not ready (attempt {attempt+1}/{retries}), retrying...")
+            print(f"Milvus not ready (attempt {attempt+1}/{retries}), retrying...")
             time.sleep(delay)
 
     raise last_error

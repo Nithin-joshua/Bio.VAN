@@ -31,6 +31,10 @@ yarn-error.log
 
 # Environment variables
 .env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
 
 # Project specific
 visited_sites.json
@@ -44,6 +48,26 @@ build/
 lint_*.json
 lint_*.txt
 .DS_Store
+
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Java
+*.class
+*.jar
+*.war
+*.ear
+target/
+.mvn/wrapper/maven-wrapper.properties
+
+# OS generated files
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
 
 # Documentation
 PROJECT_REPORT.md

@@ -69,7 +69,10 @@ def db_session(test_db_setup):
 def milvus_client():
     """Provide Milvus client for testing."""
     from database.milvus_client import get_milvus_client
-    client = get_milvus_client()
+    try:
+        client = get_milvus_client()
+    except Exception as e:
+        pytest.skip(f"Milvus not available: {e}")
     yield client
     # Cleanup: Remove test vectors if needed
     # Note: Be careful not to delete production data

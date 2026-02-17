@@ -65,7 +65,7 @@ class TestResponseTimes:
         
         response_time = end_time - start_time
         
-        print(f"\n✓ Enrollment Response Time: {response_time:.2f}s")
+        print(f"\nEnrollment Response Time: {response_time:.2f}s")
         
         # Enrollment should complete within reasonable time
         assert response_time < 30.0  # 30 seconds max
@@ -102,7 +102,7 @@ class TestResponseTimes:
         
         response_time = end_time - start_time
         
-        print(f"\n✓ Verification Response Time: {response_time:.2f}s")
+        print(f"\nVerification Response Time: {response_time:.2f}s")
         
         # Verification should be fast
         assert response_time < 10.0  # 10 seconds max
@@ -167,8 +167,8 @@ class TestConcurrentRequests:
         success_count = sum(1 for r in results if r["status"] == 200)
         avg_duration = sum(r["duration"] for r in results) / len(results)
         
-        print(f"\n✓ Concurrent Enrollments: {success_count}/5 succeeded")
-        print(f"✓ Average Duration: {avg_duration:.2f}s")
+        print(f"\nConcurrent Enrollments: {success_count}/5 succeeded")
+        print(f"Average Duration: {avg_duration:.2f}s")
         
         assert success_count >= 4  # At least 80% success rate
     
@@ -214,8 +214,8 @@ class TestConcurrentRequests:
         success_count = sum(1 for r in results if r["status"] == 200)
         avg_duration = sum(r["duration"] for r in results) / len(results)
         
-        print(f"\n✓ Concurrent Verifications: {success_count}/10 succeeded")
-        print(f"✓ Average Duration: {avg_duration:.2f}s")
+        print(f"\nConcurrent Verifications: {success_count}/10 succeeded")
+        print(f"Average Duration: {avg_duration:.2f}s")
         
         assert success_count >= 8  # At least 80% success rate
 
@@ -280,8 +280,8 @@ class TestThroughput:
         total_time = end_time - start_time
         throughput = num_requests / total_time
         
-        print(f"\n✓ Verification Throughput: {throughput:.2f} requests/second")
-        print(f"✓ Total Time for {num_requests} requests: {total_time:.2f}s")
+        print(f"\nVerification Throughput: {throughput:.2f} requests/second")
+        print(f"Total Time for {num_requests} requests: {total_time:.2f}s")
         
         # Should handle at least 1 request per second
         assert throughput >= 1.0
@@ -319,7 +319,7 @@ class TestResourceUsage:
         peak_memory = process.memory_info().rss / 1024 / 1024  # MB
         memory_increase = peak_memory - baseline_memory
         
-        print(f"\n✓ Memory Usage: {memory_increase:.2f} MB increase")
+        print(f"\nMemory Usage: {memory_increase:.2f} MB increase")
         
         # Should not consume excessive memory
         assert memory_increase < 500  # Less than 500 MB increase

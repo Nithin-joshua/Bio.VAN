@@ -115,6 +115,10 @@ const EnrollPage = () => {
           if (check.status === "success") {
             saveVoiceSample(audioBlob, sampleId);
             showToast("Sample Verified: Live Human Audio.", "success");
+          } else if (check.error_code === "MIC_TOO_FAR") {
+            showToast("Mic too far during enrollment. Move closer and re-record this sample.", "warning");
+          } else if (check.error_code === "AUDIO_QUALITY_LOW") {
+            showToast("Audio quality too low. Check your microphone or environment and try again.", "warning");
           } else {
             showToast(`Sample Rejected: ${check.message}`, "error");
           }
@@ -317,7 +321,7 @@ const EnrollPage = () => {
                 <div className="player-buttons">
                   {/* Previous Step */}
                   <button onClick={returnToPreviousStep} className="player-btn-small" title="Back">
-                    <span style={{ transform: 'scaleX(-1)', display: 'inline-block' }}>➜</span>
+                    <span style={{ transform: 'scaleX(-1)', display: 'inline-block' }}>&gt;</span>
                   </button>
 
                   {/* Record / Stop */}
@@ -336,7 +340,7 @@ const EnrollPage = () => {
                     style={{ opacity: (!hasRecording || isSubmittingToServer) ? 0.5 : 1, cursor: (!hasRecording || isSubmittingToServer) ? 'not-allowed' : 'pointer' }}
                     title="Next Sample"
                   >
-                    <span>➜</span>
+                    <span>&gt;</span>
                   </button>
                 </div>
 
@@ -373,7 +377,7 @@ const EnrollPage = () => {
         return (
           <Card title="REGISTRATION COMPLETE" status="SUCCESS" delay={0.1}>
             <div style={{ padding: '2rem', textAlign: 'center', maxWidth: '400px' }}>
-              <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>🎉</div>
+              <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>*</div>
               <h3 style={{ color: 'var(--primary-color)', marginBottom: '1rem' }}>IDENTITY ENCODED</h3>
               {generatedUserId && (
                 <div style={{ margin: '1rem 0', padding: '1rem', border: '1px dashed var(--primary-color)', background: 'rgba(0, 243, 255, 0.05)' }}>

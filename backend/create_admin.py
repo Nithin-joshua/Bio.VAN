@@ -29,12 +29,12 @@ def create_admin_user():
             session.add(new_user)
         
         session.commit()
-        print("✅ Admin user configured successfully.")
+        print("Admin user configured successfully.")
         print(f"Email: {email}")
         print(f"Password: {password}")
         
     except Exception as e:
-        print(f"❌ Failed to create admin user: {e}")
+        print(f"Failed to create admin user: {e}")
         session.rollback()
     finally:
         session.close()

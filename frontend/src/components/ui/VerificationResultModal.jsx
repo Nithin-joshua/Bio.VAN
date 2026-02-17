@@ -15,9 +15,18 @@ const VerificationResultModal = ({ result, onClose }) => {
     let livelinessColor = 'var(--text-secondary)';
 
     if (result.liveness_metrics) {
-        if (result.liveness_metrics.is_live) {
+        const isLive = result.liveness_metrics.is_live;
+        const status = result.liveness_metrics.status || (isLive ? 'live' : 'spoof');
+
+        if (isLive) {
             livelinessText = 'CONFIRMED';
             livelinessColor = 'var(--neon-green)';
+        } else if (status === 'too_far') {
+            livelinessText = 'FAILED (MIC TOO FAR)';
+            livelinessColor = 'var(--neon-red)';
+        } else if (status === 'bad_audio') {
+            livelinessText = 'FAILED (AUDIO QUALITY)';
+            livelinessColor = 'var(--neon-red)';
         } else {
             livelinessText = 'FAILED (SPOOF)';
             livelinessColor = 'var(--neon-red)';
@@ -34,7 +43,13 @@ const VerificationResultModal = ({ result, onClose }) => {
 
     const borderColor = result.verified ? 'var(--neon-green)' : 'var(--neon-red)';
     const shadowColor = result.verified ? 'rgba(0, 255, 0, 0.2)' : 'rgba(255, 0, 0, 0.2)';
-    const headerText = result.verified ? 'ACCESS GRANTED' : (result.spoof ? 'SECURITY ALERT' : 'ACCESS DENIED');
+    const headerText = result.verified
+        ? 'ACCESS GRANTED'
+        : (result.error_code === 'MIC_TOO_FAR'
+            ? 'MIC TOO FAR'
+            : (result.error_code === 'AUDIO_QUALITY_LOW'
+                ? 'AUDIO ERROR'
+                : (result.spoof ? 'SECURITY ALERT' : 'ACCESS DENIED')));
 
     return (
         <div className="modal-overlay">

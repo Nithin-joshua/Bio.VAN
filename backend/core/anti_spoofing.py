@@ -45,12 +45,12 @@ class LivenessDetector:
                 self.model.load_state_dict(state_dict, strict=False)
                 self.model.eval()
                 self.using_model = True
-                print("✅ RawNet2 Loaded Successfully.")
+                print("RawNet2 Loaded Successfully.")
             except Exception as e:
-                print(f"⚠️ Failed to load RawNet2 weights: {e}")
+                print(f"Failed to load RawNet2 weights: {e}")
                 print("Using heuristic fallback.")
         else:
-            print(f"ℹ️ RawNet2 weights not found at {weight_path}")
+            print(f"RawNet2 weights not found at {weight_path}")
             print("Using heuristic fallback.")
 
     def analyze(self, audio_data: np.ndarray, sample_rate: int = 16000) -> dict:
@@ -62,7 +62,14 @@ class LivenessDetector:
         start_time = time.time()
         if len(audio_data) == 0:
              print("DEBUG: Liveness Check Failed - Empty Audio")
-             return {"is_live": False, "score": 0.0, "reason": "Empty audio"}
+             return {
+                 "is_live": False,
+                 "score": 0.0,
+                 "confidence": 0.0,
+                 "reason": "Empty audio",
+                 "status": "bad_audio",
+                 "method": "Heuristic"
+             }
         
         # -------------------------
         # 1. Heuristic Pre-Checks
@@ -70,26 +77,34 @@ class LivenessDetector:
         # Fast, rule-based checks to catch obvious errors or low-quality attacks
         # before running the expensive deep learning model.
         
-        # Energy Analysis: Catch silent or near-silent audio
         energy = np.mean(audio_data ** 2)
+        rms = float(np.sqrt(energy))
         print(f"DEBUG: Audio Energy: {energy}")
-        if energy < 1e-6: # Lowered silence check (was 1e-5)
+        if energy < 1e-5:
             print("DEBUG: Audio too silent")
-            return {"is_live": False, "score": 0.0, "reason": "Audio too silent"}
+            return {
+                "is_live": False,
+                "score": 0.0,
+                "confidence": 0.0,
+                "reason": "Audio too silent",
+                "status": "too_far",
+                "method": "Heuristic"
+            }
 
         heuristic_score = 1.0
         heuristic_reason = "Pass"
 
-        # Variance Check: Synthetic speech sometimes has unnaturally low variance
         variance = np.var(audio_data)
         print(f"DEBUG: Audio Variance: {variance}")
-        if variance < 1e-5: # Lowered variance threshold (was 1e-4)
-             heuristic_score -= 0.1 # Reduced penalty (was 0.2)
+        if variance < 1e-4:
+             heuristic_score -= 0.2
              heuristic_reason = "Low variance (possible synthesis)"
              print(f"DEBUG: Low Variance Detected: {variance}")
 
-        # Frequency Check (Bass vs Treble)
-        # Replayed audio often lacks high/low frequency details due to speaker limitations
+        spectral_entropy = None
+        spectral_rolloff = None
+        hnr_estimate = None
+        phase_variance = None
         if welch:
             freqs, psd = welch(audio_data, fs=sample_rate)
             low_freq_energy = np.sum(psd[(freqs < 300)])
@@ -103,10 +118,30 @@ class LivenessDetector:
                 
             print(f"DEBUG: Freq Analysis - Low: {low_freq_energy:.6f}, High: {high_freq_energy:.6f}, Ratio: {ratio:.6f}")
             
-            if ratio < 0.001: # Lowered high freq requirement (was 0.01)
-                heuristic_score -= 0.2 # Reduced penalty (was 0.3)
+            if ratio < 0.002:
+                heuristic_score -= 0.3
                 heuristic_reason = "Muffled Audio (possible replay)"
                 print("DEBUG: Muffled Audio Detected")
+
+            psd_safe = psd + 1e-12
+            psd_norm = psd_safe / np.sum(psd_safe)
+            log_psd = np.log(psd_norm)
+            spectral_entropy = float(-np.sum(psd_norm * log_psd))
+
+            cumulative = np.cumsum(psd_safe)
+            rolloff_threshold = 0.85 * cumulative[-1]
+            rolloff_idx = int(np.searchsorted(cumulative, rolloff_threshold))
+            if rolloff_idx >= len(freqs):
+                rolloff_idx = len(freqs) - 1
+            spectral_rolloff = float(freqs[rolloff_idx])
+
+            voiced_energy = low_freq_energy
+            noise_energy = max(float(np.sum(psd_safe) - voiced_energy), 1e-12)
+            hnr_estimate = float(10.0 * np.log10(voiced_energy / noise_energy))
+
+            fft_vals = np.fft.rfft(audio_data)
+            phases = np.angle(fft_vals)
+            phase_variance = float(np.var(phases))
 
         # -------------------------
         # 2. RawNet2 Analysis
@@ -153,6 +188,7 @@ class LivenessDetector:
         
         final_score = 0.0
         final_reason = ""
+        status = "live"
         
         if self.using_model:
             # Weighted Ensemble: 80% Model, 20% Heuristics
@@ -164,7 +200,8 @@ class LivenessDetector:
             if model_score < 0.1:
                 final_score = model_score
                 final_reason = "AI Clone Detected (RawNet2)"
-            elif heuristic_score < 0.5: # Lowered (was 0.6)
+                status = "spoof"
+            elif heuristic_score < 0.5:
                 final_reason = f"Signal Artifacts Detected ({heuristic_reason})"
             else:
                 final_reason = "Human Live"
@@ -172,17 +209,35 @@ class LivenessDetector:
             final_score = heuristic_score
             final_reason = heuristic_reason + " (Heuristic Only)"
 
-        # Lowered passing threshold (was 0.60)
-        is_live = final_score > 0.55
+        is_live = final_score > 0.6
+        if not is_live and status == "live":
+            # Refine non-live cases that are not clear spoofs
+            if energy < 5e-5 or "Muffled Audio" in heuristic_reason:
+                status = "too_far"
+            else:
+                status = "spoof"
         
         end_time = time.time()
-        print(f"DEBUG: Final Liveness Score: {final_score:.4f} (Threshold: 0.55) -> {is_live}. Time: {end_time - start_time:.4f}s")
+        print(f"DEBUG: Final Liveness Score: {final_score:.4f} (Threshold: 0.60) -> {is_live}. Time: {end_time - start_time:.4f}s")
+
+        metrics = {
+            "energy": float(energy),
+            "rms": rms,
+            "variance": float(variance),
+            "spectral_entropy": spectral_entropy,
+            "spectral_rolloff": spectral_rolloff,
+            "hnr_estimate": hnr_estimate,
+            "phase_variance": phase_variance
+        }
 
         return {
             "is_live": is_live,
             "score": round(final_score, 3),
+            "confidence": round(final_score, 3),
             "reason": final_reason,
-            "method": "RawNet2+Heuristic" if self.using_model else "Heuristic"
+            "status": status,
+            "method": "RawNet2+Heuristic" if self.using_model else "Heuristic",
+            "metrics": metrics
         }
 
 # Global instance

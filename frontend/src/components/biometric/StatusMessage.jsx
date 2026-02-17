@@ -10,6 +10,8 @@ const StatusMessage = ({ status, similarity }) => {
       case 'verified': return 'IDENTITY CONFIRMED.';
       case 'rejected': return 'ACCESS DENIED. MISMATCH.';
       case 'spoof': return 'SECURITY ALERT: SPOOF DETECTED.';
+      case 'too_far': return 'MIC TOO FAR. MOVE CLOSER AND RETRY.';
+      case 'bad_audio': return 'AUDIO QUALITY TOO LOW. CHECK MIC/ENVIRONMENT.';
       default: return 'STANDBY';
     }
   };

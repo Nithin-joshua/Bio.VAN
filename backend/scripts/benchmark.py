@@ -5,24 +5,9 @@ import glob
 import itertools
 from pathlib import Path
 
-# Add backend to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from core.evaluation import calculate_eer, calculate_metrics
-# Assuming core_engine is available in src (project structure is a bit split)
-# We will try to import from the location seen in existing code.
-# Ideally we use the REST API logic or the Engine class.
-# Let's try to import the core model directly to avoid 'audio_loader' path issues if possible
-# But reusing VoiceAuthEngine is cleaner.
-
-# However, VoiceAuthEngine seems to be in voice_auth_project/src/core_engine.py
-# which is OUTSIDE backend?
-# Wait, list_dir of backend/ (step 6) showed `core_engine.py` is present there too?
-# Step 6: {"name":"core_engine.py"} inside backend.
-# Let's check THAT file. Step 15 showed backend/api/main.py. Step 16 showed voice_auth_project/src/core_engine.py.
-# I missed checking backend/core_engine.py.
-
-# Let's assume we use the one in backend/core_engine.py if it exists, or just use `core.speaker_model`.
 from core.speaker_model import ECAPAModel
 from core.preprocessing import load_audio
 from core.verification import compare_embeddings

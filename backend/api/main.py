@@ -197,13 +197,16 @@ async def enroll(
                     print(f"DEBUG: Verifying Sample {i+1} against phrase '{expected_phrase}'")
                     is_valid, score, transcribed = await run_in_threadpool(_verify_challenge_wrapper, tmp_path, expected_phrase)
                     print(f"DEBUG: Transcription: '{transcribed}' (Score: {score})")
-                    if not is_valid:
-                         print(f"DEBUG: Phrase Mismatch for Sample {i+1}. Expected: '{expected_phrase}', Got: '{transcribed}'")
-                         raise HTTPException(
-                            status_code=400, 
-                            detail=f"Verification Failed for Sample {i+1}: Phrase Mismatch. You said: '{transcribed}'"
-                        )
-                    print(f"✅ Sample {i+1} Verified: Matches '{expected_phrase}'")
+                    if transcribed == "ASR_UNAVAILABLE":
+                        print(f"DEBUG: ASR unavailable. Skipping challenge verification for Sample {i+1}.")
+                    else:
+                        if not is_valid:
+                            print(f"DEBUG: Phrase Mismatch for Sample {i+1}. Expected: '{expected_phrase}', Got: '{transcribed}'")
+                            raise HTTPException(
+                                status_code=400, 
+                                detail=f"Verification Failed for Sample {i+1}: Phrase Mismatch. You said: '{transcribed}'"
+                            )
+                        print(f"Sample {i+1} Verified: Matches '{expected_phrase}'")
 
                 # Liveness Check
                 liveness = await run_in_threadpool(_liveness_analyze, audio)
@@ -237,11 +240,11 @@ async def enroll(
         existing_match = await run_in_threadpool(search_embedding, mean_embedding, top_k=1)
         
         if existing_match and len(existing_match) > 0 and existing_match[0].distance > 0.85: # Strict threshold for duplicates
-             print(f"⚠️ Security Alert: Duplicate Biometric Detected! Score: {existing_match[0].distance}")
-             raise HTTPException(
+            print(f"Security Alert: Duplicate Biometric Detected. Score: {existing_match[0].distance}")
+            raise HTTPException(
                 status_code=409,
                 detail="Biometric Security Alert: Voice signature already registered under another identity."
-             )
+            )
 
         # ---------------------------------------------------------
         # 3. CREATE IDENTITY
@@ -325,7 +328,7 @@ async def delete_user_endpoint(
         if voice_uuid:
              await run_in_threadpool(delete_embedding, voice_uuid)
 
-        print(f"✅ User {user_id} and associated vector data deleted.")
+        print(f"User {user_id} and associated vector data deleted.")
         return {"status": "success", "message": f"User {user_id} deleted successfully."}
 
     except HTTPException as he:
@@ -393,23 +396,41 @@ async def verify(
         liveness = await run_in_threadpool(_liveness_analyze, audio)
         print(f"DEBUG: Liveness Result: {liveness}")
         
-        # If definitive spoof, reject immediately
+        # If liveness fails, classify the failure mode
         if not liveness["is_live"]:
+            status = liveness.get("status", "spoof")
+            error_code = "SPOOF_DETECTED"
+            message = f"Spoof detected: {liveness['reason']}"
+            spoof_flag = True
+            decision_label = "SPOOF_REJECTED"
+
+            if status in ("too_far", "bad_audio"):
+                spoof_flag = False
+                if status == "too_far":
+                    error_code = "MIC_TOO_FAR"
+                    message = "Voice signal too weak or distant. Please move closer to the microphone and try again."
+                    decision_label = "MIC_TOO_FAR"
+                else:
+                    error_code = "AUDIO_QUALITY_LOW"
+                    message = "Audio quality too low for verification. Check your microphone and environment."
+                    decision_label = "AUDIO_QUALITY_LOW"
+
             try:
                 log_auth(
                     speaker_id if speaker_id else -1,
                     0.0,
-                    "SPOOF_REJECTED"
+                    decision_label
                 )
             except Exception as e:
-                print(f"Warning: Failed to log spoof attempt: {e}")
+                print(f"Warning: Failed to log liveness failure: {e}")
+
             return {
                 "verified": False,
                 "similarity_score": 0.0,
                 "matched_speaker_id": None,
-                "error_code": "SPOOF_DETECTED",
-                "message": f"Spoof detected: {liveness['reason']}",
-                "spoof": True, # Explicit flag for frontend
+                "error_code": error_code,
+                "message": message,
+                "spoof": spoof_flag,
                 "liveness_metrics": liveness
             }
 
@@ -421,17 +442,20 @@ async def verify(
             print(f"DEBUG: Verifying Challenge Phrase: '{challenge_phrase}'")
             is_valid_phrase, phrase_score, transcribed_text = await run_in_threadpool(_verify_challenge_wrapper, tmp_path, challenge_phrase)
             
-            if not is_valid_phrase:
-                return {
-                    "verified": False,
-                    "similarity_score": 0.0,
-                    "matched_speaker_id": None,
-                    "error_code": "CHALLENGE_FAILED",
-                    "message": f"Phrase Mismatch. You said: '{transcribed_text}'. Expected: '{challenge_phrase}'",
-                    "spoof": False, # Passed liveness, failed phrase
-                    "liveness_metrics": liveness
-                }
-            print("✅ Challenge Phrase Verified")
+            if transcribed_text == "ASR_UNAVAILABLE":
+                print("DEBUG: ASR unavailable. Skipping challenge verification for this request.")
+            else:
+                if not is_valid_phrase:
+                    return {
+                        "verified": False,
+                        "similarity_score": 0.0,
+                        "matched_speaker_id": None,
+                        "error_code": "CHALLENGE_FAILED",
+                        "message": f"Phrase Mismatch. You said: '{transcribed_text}'. Expected: '{challenge_phrase}'",
+                        "spoof": False, # Passed liveness, failed phrase
+                        "liveness_metrics": liveness
+                    }
+                print("Challenge Phrase Verified")
 
         embedding = await run_in_threadpool(_model_extract, audio)
 
