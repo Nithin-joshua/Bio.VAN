@@ -18,7 +18,13 @@ CHALLENGE_PHRASES = [
     "The sky above the port was the color of television, tuned to a dead channel",
     "Voice authentication provides a secure and seamless way to log in",
     "Delta Echo Foxtrot, authorizing access to the secure facility now",
-    "System override initiated, please confirm your authorization level immediately"
+    "System override initiated, please confirm your authorization level immediately",
+    "Gamma Sector seven requires immediate voice confirmation for entry clearance",
+    "Neural firewalls are shielding the core as encrypted packets traverse the grid",
+    "Quantum relays hum softly while the secure uplink awaits vocal authorization",
+    "Midnight protocols engage when the chrono counter reaches zero nine three seven",
+    "Echo nine four seven, initiating silent handshake with the central authentication node",
+    "Biometric cipher keys rotate every cycle to harden the perimeter against intrusion"
 ]
 
 _USED_CHALLENGES = set()
