@@ -12,6 +12,8 @@ const StatusMessage = ({ status, similarity }) => {
       case 'spoof': return 'SECURITY ALERT: SPOOF DETECTED.';
       case 'too_far': return 'MIC TOO FAR. MOVE CLOSER AND RETRY.';
       case 'bad_audio': return 'AUDIO QUALITY TOO LOW. CHECK MIC/ENVIRONMENT.';
+      case 'too_short': return 'AUDIO TOO SHORT. SPEAK LONGER PHRASE.';
+      case 'challenge_failed': return 'PHRASE MISMATCH. REPEAT SECURITY PROTOCOL.';
       default: return 'STANDBY';
     }
   };

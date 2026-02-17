@@ -434,16 +434,21 @@ async def verify(
                 "liveness_metrics": liveness
             }
 
-        # ---------------------------------------------------------
-        # 4. Challenge-Response Check (Anti-Replay)
-        # ---------------------------------------------------------
-        # If a challenge phrase was expected, verify it using ASR
         if challenge_phrase:
             print(f"DEBUG: Verifying Challenge Phrase: '{challenge_phrase}'")
             is_valid_phrase, phrase_score, transcribed_text = await run_in_threadpool(_verify_challenge_wrapper, tmp_path, challenge_phrase)
             
             if transcribed_text == "ASR_UNAVAILABLE":
-                print("DEBUG: ASR unavailable. Skipping challenge verification for this request.")
+                print("DEBUG: ASR unavailable. Rejecting verification due to missing challenge check.")
+                return {
+                    "verified": False,
+                    "similarity_score": 0.0,
+                    "matched_speaker_id": None,
+                    "error_code": "ASR_UNAVAILABLE",
+                    "message": "Challenge verification system unavailable. Please try again later.",
+                    "spoof": False,
+                    "liveness_metrics": liveness
+                }
             else:
                 if not is_valid_phrase:
                     return {

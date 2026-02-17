@@ -25,10 +25,12 @@ def main():
     hashed_pw = get_password_hash(args.password)
     
     try:
+        # Use email as stable user_id for admin account
         user = create_user(
             full_name=args.name,
             email=args.email,
             role="admin",
+            user_id=args.email,
             hashed_password=hashed_pw
         )
         print(f"Success! Admin created with ID: {user.id}")

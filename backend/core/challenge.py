@@ -3,12 +3,12 @@ import os
 import random
 import string
 import difflib
+import wave
+import json
 from functools import lru_cache
 
-os.environ["HF_HUB_DISABLE_SYMLINKS"] = "1"
-os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
-
-from speechbrain.pretrained import EncoderDecoderASR
+from vosk import Model, KaldiRecognizer
+from config.settings import VOSK_MODEL_PATH
 
 CHALLENGE_PHRASES = [
     "The quick brown fox jumps over the lazy dog near the river bank",
@@ -31,12 +31,9 @@ def get_asr_model():
     if _ASR_UNAVAILABLE:
         return None
     try:
-        return EncoderDecoderASR.from_hparams(
-            source="speechbrain/asr-crdnn-rnnlm-librispeech",
-            savedir="pretrained_models/asr"
-        )
+        return Model(VOSK_MODEL_PATH)
     except Exception as e:
-        print(f"ERROR: Failed to load ASR model: {e}")
+        print(f"ERROR: Failed to load Vosk model: {e}")
         _ASR_UNAVAILABLE = True
         return None
 
@@ -71,11 +68,20 @@ def verify_challenge(audio_path, target_phrase):
     Returns (success: bool, similarity_score: int, transcribed_text: str)
     """
     try:
-        asr_model = get_asr_model()
-        if asr_model is None:
+        model = get_asr_model()
+        if model is None:
             print("WARN: ASR model unavailable, skipping challenge verification")
             return True, 0, "ASR_UNAVAILABLE"
-        text = asr_model.transcribe_file(audio_path)
+
+        wf = wave.open(audio_path, "rb")
+        recognizer = KaldiRecognizer(model, wf.getframerate())
+        while True:
+            data = wf.readframes(4000)
+            if len(data) == 0:
+                break
+            recognizer.AcceptWaveform(data)
+        result = json.loads(recognizer.FinalResult())
+        text = result.get("text", "")
         print(f"DEBUG: Transcribed Text: '{text}'")
     except Exception as e:
         print(f"ERROR: Challenge Logic Failed: {e}")

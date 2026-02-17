@@ -31,59 +31,55 @@ def init_milvus(retries: int = 10, delay: int = 2):
 
     for attempt in range(retries):
         try:
+            # 1. Connect
             connections.connect(
                 alias="default",
                 host="localhost",
                 port="19530"
             )
 
+            # 2. Check/Create Collection
             if not utility.has_collection(MILVUS_COLLECTION):
+                # ... (schema definition remains the same) ...
                 fields = [
-                    FieldSchema(
-                        name="speaker_id",
-                        dtype=DataType.VARCHAR,
-                        max_length=128,
-                        is_primary=True,
-                        auto_id=False
-                    ),
-                    FieldSchema(
-                        name="embedding",
-                        dtype=DataType.FLOAT_VECTOR,
-                        dim=EMBEDDING_DIM
-                    )
+                    FieldSchema(name="speaker_id", dtype=DataType.VARCHAR, max_length=128, is_primary=True, auto_id=False),
+                    FieldSchema(name="embedding", dtype=DataType.FLOAT_VECTOR, dim=EMBEDDING_DIM)
                 ]
-
-                schema = CollectionSchema(
-                    fields,
-                    description="Speaker embeddings"
-                )
-
-                _collection = Collection(
-                    name=MILVUS_COLLECTION,
-                    schema=schema
-                )
-
+                schema = CollectionSchema(fields, description="Speaker embeddings")
+                _collection = Collection(name=MILVUS_COLLECTION, schema=schema)
+                
+                # Create Index
                 index_params = {
                     "index_type": "IVF_FLAT",
                     "metric_type": "COSINE",
                     "params": {"nlist": 1024}
                 }
-
-                _collection.create_index(
-                    field_name="embedding",
-                    index_params=index_params
-                )
-
+                _collection.create_index(field_name="embedding", index_params=index_params)
             else:
                 _collection = Collection(MILVUS_COLLECTION)
 
-            _collection.load()
+            # 3. Load Collection (Retry if leader unavailable)
+            for load_attempt in range(3):
+                try:
+                    _collection.load()
+                    break
+                except Exception as e:
+                    if "leader not available" in str(e) and load_attempt < 2:
+                        print(f"WARN: Milvus leader unavailable during load (attempt {load_attempt+1}), retrying...")
+                        time.sleep(1)
+                    else:
+                        raise e
+
             print("Milvus connected and collection loaded")
             return _collection
 
         except Exception as e:
             last_error = e
-            print(f"Milvus not ready (attempt {attempt+1}/{retries}), retrying...")
+            print(f"Milvus not ready (attempt {attempt+1}/{retries}): {e}")
+            try:
+                 connections.disconnect("default")
+            except:
+                 pass
             time.sleep(delay)
 
     raise last_error

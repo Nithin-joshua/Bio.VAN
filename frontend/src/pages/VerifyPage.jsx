@@ -81,7 +81,7 @@ const VerifyPage = () => {
         appendTerminalLog('CHALLENGE EXPIRED. ISSUING NEW PROTOCOL.');
         appendTerminalLog(`PROTOCOL: "${phrase}"`);
       }
-    }, 10000);
+    }, 30000);
 
     return () => clearTimeout(timer);
   }, [challengePhrase, verificationStatus]);
@@ -188,6 +188,16 @@ const VerifyPage = () => {
         setTimeout(() => {
           navigate('/enroll');
         }, 4000);
+
+      } else if (result.error_code === 'DURATION_TOO_SHORT') {
+        appendTerminalLog('ERROR: AUDIO DURATION BELOW MINIMUM THRESHOLD.');
+        setVerificationStatus('too_short');
+        showToast(result.message || 'Audio too short. Please speak for a bit longer.', 'warning');
+
+      } else if (result.error_code === 'CHALLENGE_FAILED') {
+        appendTerminalLog('ERROR: SECURITY PHRASE MISMATCH DETECTED.');
+        setVerificationStatus('challenge_failed');
+        showToast(result.message || 'Phrase mismatch. Please repeat the displayed protocol.', 'warning');
 
       } else if (result.verified) {
         // CASE: Success (High Similarity > Threshold)
