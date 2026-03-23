@@ -1,7 +1,7 @@
 import '@testing-library/jest-dom';
 
 // Mock MediaRecorder
-global.MediaRecorder = class {
+globalThis.MediaRecorder = class {
     constructor(stream, options) {
         this.stream = stream;
         this.options = options;
@@ -13,7 +13,7 @@ global.MediaRecorder = class {
         };
         this.ondataavailable = () => { };
     }
-    static isTypeSupported(mimeType) {
+    static isTypeSupported() {
         return true;
     }
 };
@@ -55,7 +55,7 @@ HTMLCanvasElement.prototype.getContext = () => {
 };
 
 // Mock AudioContext
-global.AudioContext = class {
+globalThis.AudioContext = class {
     constructor() {
         this.createAnalyser = () => ({
             connect: () => { },
@@ -84,10 +84,10 @@ global.AudioContext = class {
     }
 };
 
-global.window.AudioContext = global.AudioContext;
+globalThis.window.AudioContext = globalThis.AudioContext;
 
 // Mock navigator.mediaDevices
-Object.defineProperty(global.navigator, 'mediaDevices', {
+Object.defineProperty(globalThis.navigator, 'mediaDevices', {
     value: {
         getUserMedia: async () => ({
             getTracks: () => [{ stop: () => { } }],
@@ -96,7 +96,7 @@ Object.defineProperty(global.navigator, 'mediaDevices', {
 });
 
 // Mock ResizeObserver
-global.ResizeObserver = class ResizeObserver {
+globalThis.ResizeObserver = class ResizeObserver {
     observe() { }
     unobserve() { }
     disconnect() { }

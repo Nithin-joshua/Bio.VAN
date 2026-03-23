@@ -357,7 +357,7 @@ const VerifyPage = () => {
             {/* Protocol Text */}
             <div className="player-lyrics">
               <div className="player-lyrics-text">
-                "{challengePhrase}"
+                &quot;{challengePhrase}&quot;
               </div>
             </div>
 

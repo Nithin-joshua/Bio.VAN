@@ -11,7 +11,6 @@ warnings.filterwarnings("ignore", message=".*Using SYMLINK strategy.*")
 load_dotenv()
 
 ECAPA_MODEL = "speechbrain/spkrec-ecapa-voxceleb"
-SIMILARITY_THRESHOLD = 0.80
 ADAPTIVE_THRESHOLD_MIN = 0.55
 ADAPTIVE_THRESHOLD_MAX = 0.75
 VOSK_MODEL_PATH = os.getenv("VOSK_MODEL_PATH", "vosk_model")

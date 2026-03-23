@@ -1,6 +1,49 @@
 import React, { useEffect, useRef } from 'react';
 import '../../styles/theme.css';
 
+// Particle Class - Moved outside to comply with React Hooks rules
+class Particle {
+  constructor(canvas) {
+    this.reset(canvas);
+  }
+
+  reset(canvas) {
+    this.x = Math.random() * canvas.width;
+    this.y = Math.random() * canvas.height;
+    this.size = Math.random() * 3 + 2; // Larger: 2px to 5px
+    this.speedY = Math.random() * 0.5 + 0.2; // Faster
+    this.opacity = Math.random() * 0.5 + 0.2; // Min opacity 0.2
+    this.fadeDirection = Math.random() > 0.5 ? 0.01 : -0.01;
+  }
+
+  update(canvas) {
+    this.y -= this.speedY;
+    this.opacity += this.fadeDirection;
+
+    // Pulse opacity
+    if (this.opacity <= 0.1 || this.opacity >= 1) {
+      this.fadeDirection *= -1;
+    }
+
+    // Reset if off screen
+    if (this.y < 0) {
+      this.y = canvas.height;
+      this.x = Math.random() * canvas.width;
+    }
+  }
+
+  draw(ctx) {
+    ctx.fillStyle = `rgba(0, 243, 255, ${this.opacity})`; // Neon Blue
+    ctx.beginPath();
+    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Add glow
+    ctx.shadowBlur = 10;
+    ctx.shadowColor = "rgba(0, 243, 255, 0.8)";
+  }
+}
+
 const BackgroundGrid = () => {
   const canvasRef = useRef(null);
 
@@ -20,55 +63,12 @@ const BackgroundGrid = () => {
     window.addEventListener('resize', resizeCanvas);
     resizeCanvas();
 
-    // Particle Class
-    class Particle {
-      constructor() {
-        this.reset();
-      }
-
-      reset() {
-        this.x = Math.random() * canvas.width;
-        this.y = Math.random() * canvas.height;
-        this.size = Math.random() * 3 + 2; // Larger: 2px to 5px
-        this.speedY = Math.random() * 0.5 + 0.2; // Faster
-        this.opacity = Math.random() * 0.5 + 0.2; // Min opacity 0.2
-        this.fadeDirection = Math.random() > 0.5 ? 0.01 : -0.01;
-      }
-
-      update() {
-        this.y -= this.speedY;
-        this.opacity += this.fadeDirection;
-
-        // Pulse opacity
-        if (this.opacity <= 0.1 || this.opacity >= 1) {
-          this.fadeDirection *= -1;
-        }
-
-        // Reset if off screen
-        if (this.y < 0) {
-          this.y = canvas.height;
-          this.x = Math.random() * canvas.width;
-        }
-      }
-
-      draw() {
-        ctx.fillStyle = `rgba(0, 243, 255, ${this.opacity})`; // Neon Blue
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Add glow
-        ctx.shadowBlur = 10;
-        ctx.shadowColor = "rgba(0, 243, 255, 0.8)";
-      }
-    }
-
     // Init Particles
     const initParticles = () => {
       particles = [];
       const particleCount = Math.min(window.innerWidth / 10, 100); // Responsive count
       for (let i = 0; i < particleCount; i++) {
-        particles.push(new Particle());
+        particles.push(new Particle(canvas));
       }
     };
     initParticles();
@@ -77,8 +77,8 @@ const BackgroundGrid = () => {
     const animate = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       particles.forEach(p => {
-        p.update();
-        p.draw();
+        p.update(canvas);
+        p.draw(ctx);
       });
       animationFrameId = window.requestAnimationFrame(animate);
     };

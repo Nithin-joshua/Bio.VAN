@@ -122,8 +122,9 @@ const EnrollPage = () => {
           } else {
             showToast(`Sample Rejected: ${check.message}`, "error");
           }
-        } catch (err) {
+        } catch (error) {
           // Fallback if ML service is offline (Development Mode)
+          console.warn("ML Service Error:", error);
           showToast("Verification Unavailable. Proceeding locally.", "warning");
           saveVoiceSample(audioBlob, sampleId);
         }
@@ -307,7 +308,7 @@ const EnrollPage = () => {
 
                 <div className="player-lyrics">
                   <div className="player-lyrics-text">
-                    "{currentText}"
+                    &quot;{currentText}&quot;
                   </div>
                 </div>
               </div>

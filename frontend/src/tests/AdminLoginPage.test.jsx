@@ -61,6 +61,15 @@ describe('AdminLoginPage', () => {
     });
 
     it('handles login submission and navigation', async () => {
+        // Mock fetch
+        const mockFetch = vi.fn(() =>
+            Promise.resolve({
+                ok: true,
+                json: () => Promise.resolve({ access_token: 'bypass_token' }),
+            })
+        );
+        globalThis.fetch = mockFetch;
+
         render(
             <BrowserRouter>
                 <AdminLoginPage />

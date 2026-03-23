@@ -3,8 +3,9 @@ import os
 import random
 import string
 import difflib
-import wave
 import json
+import librosa
+import numpy as np
 from functools import lru_cache
 
 from vosk import Model, KaldiRecognizer
@@ -48,11 +49,7 @@ def _generate_unique_phrase():
     attempts = 0
     phrase = None
     while attempts < 32:
-        base = random.choice(CHALLENGE_PHRASES)
-        suffix = "".join(
-            random.choices(string.ascii_uppercase + string.digits, k=6)
-        )
-        phrase = f"{base} {suffix}"
+        phrase = random.choice(CHALLENGE_PHRASES)
         if phrase not in _USED_CHALLENGES:
             _USED_CHALLENGES.add(phrase)
             return phrase
@@ -79,19 +76,25 @@ def verify_challenge(audio_path, target_phrase):
             print("WARN: ASR model unavailable, skipping challenge verification")
             return True, 0, "ASR_UNAVAILABLE"
 
-        wf = wave.open(audio_path, "rb")
-        recognizer = KaldiRecognizer(model, wf.getframerate())
-        while True:
-            data = wf.readframes(4000)
-            if len(data) == 0:
-                break
-            recognizer.AcceptWaveform(data)
+        import warnings
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            y, sr = librosa.load(audio_path, sr=16000)
+        
+        y_int16 = (y * 32767).astype(np.int16)
+        
+        recognizer = KaldiRecognizer(model, 16000)
+        chunk_size = 4000
+        for i in range(0, len(y_int16), chunk_size):
+            chunk = y_int16[i:i+chunk_size]
+            recognizer.AcceptWaveform(chunk.tobytes())
+            
         result = json.loads(recognizer.FinalResult())
         text = result.get("text", "")
         print(f"DEBUG: Transcribed Text: '{text}'")
     except Exception as e:
         print(f"ERROR: Challenge Logic Failed: {e}")
-        return True, 0, "ASR_UNAVAILABLE"
+        return False, 0, "ASR_UNAVAILABLE"
 
     similarity = int(
         difflib.SequenceMatcher(

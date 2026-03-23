@@ -48,7 +48,7 @@ const HomePage = () => {
           <Card title="VOICE PRINTING" status="ACTIVE">
             <h3 className="card-title" style={{ color: 'var(--neon-blue)' }}>UNIQUE SPECTRAL ID</h3>
             <p className="card-text">
-              Just like a fingerprint, your voice has a unique signature. We map over 1000 data points to ensure it's really you.
+              Just like a fingerprint, your voice has a unique signature. We map over 1000 data points to ensure it&apos;s really you.
             </p>
           </Card>
         </motion.div>

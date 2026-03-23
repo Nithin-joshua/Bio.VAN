@@ -40,7 +40,7 @@ from database.postgres_client import init_db, log_auth, create_user, get_user_by
 from config.settings import SIMILARITY_THRESHOLD, RE_ENROLLMENT_PERIOD_DAYS
 from api.auth import router as auth_router, get_current_active_user, get_current_admin_user
 from core.security import get_password_hash
-from fastapi import Depends
+from fastapi import Depends, Query
 from schemas import UserResponse
 from starlette.concurrency import run_in_threadpool
 
@@ -95,7 +95,7 @@ async def check_liveness(file: UploadFile = File(...)):
     2. Liveness (Anti-Spoofing)
     """
     if not file.filename.lower().endswith(('.wav', '.webm', '.ogg', '.mp3')):
-        pass 
+        raise HTTPException(status_code=400, detail=f"Unsupported audio format: {file.filename}") 
         
     with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
         tmp.write(await file.read())
@@ -150,7 +150,7 @@ async def enroll(
     full_name: str = Form(...),
     email: str = Form(...),
     role: str = Form(...),
-    # password: str = Form(...), # Removed by user request
+    password: Optional[str] = Form(None),
     sample_1: UploadFile = File(...),
     sample_2: UploadFile = File(...),
     sample_3: UploadFile = File(...),
@@ -160,7 +160,9 @@ async def enroll(
     phrases_list = []
     if challenge_phrases:
         try:
-            phrases_list = json.loads(challenge_phrases)
+            parsed = json.loads(challenge_phrases)
+            if isinstance(parsed, list):
+                phrases_list = [str(x) for x in parsed]
             print(f"DEBUG: Validating against {len(phrases_list)} challenge phrases.")
         except Exception as e:
             print(f"DEBUG: Failed to parse challenge phrases: {e}")
@@ -179,8 +181,7 @@ async def enroll(
     try:
         for i, file in enumerate(samples):
             if not file.filename.lower().endswith(('.wav', '.webm', '.ogg', '.mp3')):
-                # Fast fail for invalid formats
-                pass 
+                raise HTTPException(status_code=400, detail=f"Unsupported audio format: {file.filename}") 
             
             # Write to temp
             with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
@@ -198,7 +199,8 @@ async def enroll(
                     is_valid, score, transcribed = await run_in_threadpool(_verify_challenge_wrapper, tmp_path, expected_phrase)
                     print(f"DEBUG: Transcription: '{transcribed}' (Score: {score})")
                     if transcribed == "ASR_UNAVAILABLE":
-                        print(f"DEBUG: ASR unavailable. Skipping challenge verification for Sample {i+1}.")
+                        print(f"DEBUG: ASR unavailable. Failing challenge verification for Sample {i+1}.")
+                        raise HTTPException(status_code=500, detail="ASR unavailable. Cannot verify challenge phrase.")
                     else:
                         if not is_valid:
                             print(f"DEBUG: Phrase Mismatch for Sample {i+1}. Expected: '{expected_phrase}', Got: '{transcribed}'")
@@ -264,9 +266,11 @@ async def enroll(
         # The Vector DB only knows this UUID, not the User's Name.
         voice_uuid = str(uuid.uuid4())
         
+        hashed_pw = get_password_hash(password) if password else None
+        
         # Create User in Relational DB (Postgres)
         # Handles user profile storage and links to the generated IDs
-        user_obj = await run_in_threadpool(create_user, full_name, email, role, user_id=speaker_id, hashed_password=None, voice_uuid=voice_uuid)
+        user_obj = await run_in_threadpool(create_user, full_name, email, role, user_id=speaker_id, hashed_password=hashed_pw, voice_uuid=voice_uuid)
         speaker_id = user_obj.id 
 
         # ---------------------------------------------------------
@@ -359,12 +363,11 @@ async def get_challenge(count: int = 1):
 @app.post("/verify")
 async def verify(
     file: UploadFile = File(...),
-    speaker_id: Optional[str] = None,
+    speaker_id: Optional[str] = Query(None),
     challenge_phrase: Optional[str] = Form(None) # Client sends the phrase they were asked to say
 ):
     if not file.filename.lower().endswith(('.wav', '.webm', '.ogg', '.mp3')):
-         # Frontend sends .wav now, but good to be permissive
-        pass 
+         raise HTTPException(status_code=400, detail=f"Unsupported audio format: {file.filename}") 
     
     # Write to temp
     with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
@@ -416,8 +419,9 @@ async def verify(
                     decision_label = "AUDIO_QUALITY_LOW"
 
             try:
-                log_auth(
-                    speaker_id if speaker_id else -1,
+                await run_in_threadpool(
+                    log_auth,
+                    speaker_id if speaker_id else "-1",
                     0.0,
                     decision_label
                 )

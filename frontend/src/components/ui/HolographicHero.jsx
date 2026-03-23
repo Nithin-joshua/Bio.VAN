@@ -13,7 +13,7 @@ const HolographicHero = ({ className = '' }) => {
             <svg viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%', overflow: 'visible' }}>
                 <defs>
                     <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-                        <feGaussianBlur stdDeviation="15" result="blur" /> // Increased blur
+                        <feGaussianBlur stdDeviation="15" result="blur" />
                         <feComposite in="SourceGraphic" in2="blur" operator="over" />
                     </filter>
                     <style>

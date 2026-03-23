@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import VerifyPage from '../pages/VerifyPage';
 import { ToastProvider } from '../context/ToastContext';
@@ -37,9 +37,6 @@ vi.mock('../audio/useRecorder', () => ({
 vi.mock('../audio/useWaveformAnalyzer', () => ({
     useWaveformAnalyzer: () => new Uint8Array(128).fill(0),
 }));
-
-import { authenticateVoiceSample } from '../api/verify.api';
-import { useRecorder } from '../audio/useRecorder';
 
 describe('VerifyPage', () => {
     beforeEach(() => {
