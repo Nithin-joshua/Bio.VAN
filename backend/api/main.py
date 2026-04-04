@@ -37,7 +37,7 @@ def _model_extract(audio):
 
 
 from database.postgres_client import init_db, log_auth, create_user, get_user_by_voice_uuid, get_user_by_id
-from config.settings import SIMILARITY_THRESHOLD, RE_ENROLLMENT_PERIOD_DAYS
+from config.settings import RE_ENROLLMENT_PERIOD_DAYS
 from api.auth import router as auth_router, get_current_active_user, get_current_admin_user
 from core.security import get_password_hash
 from fastapi import Depends, Query

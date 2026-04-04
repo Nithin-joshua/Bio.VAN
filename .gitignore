@@ -31,6 +31,7 @@ yarn-error.log
 
 # Environment variables
 .env
+.env/
 .env.local
 .env.development.local
 .env.test.local
@@ -48,6 +49,7 @@ build/
 lint_*.json
 lint_*.txt
 .DS_Store
+tmp/
 
 # IDEs
 .idea/
@@ -71,3 +73,8 @@ $RECYCLE.BIN/
 
 # Documentation
 PROJECT_REPORT.md
+
+# Large/unnecessary files
+*.zip
+*.mp4
+*.csv
