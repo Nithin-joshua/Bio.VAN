@@ -209,7 +209,7 @@ class LivenessDetector:
             final_score = heuristic_score
             final_reason = heuristic_reason + " (Heuristic Only)"
 
-        is_live = final_score > 0.6
+        is_live = final_score > 0.5
         if not is_live and status == "live":
             # Refine non-live cases that are not clear spoofs
             if energy < 5e-5 or "Muffled Audio" in heuristic_reason:

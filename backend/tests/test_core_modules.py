@@ -98,18 +98,20 @@ class TestSpeakerModel:
         embedding = get_embedding(audio, sr)
         
         assert embedding is not None
-        assert isinstance(embedding, np.ndarray)
+        assert isinstance(embedding, list)
+        # Convert to numpy for further vector math assertions
+        embedding_np = np.array(embedding)
         # ECAPA-TDNN produces 192-dimensional embeddings
-        assert embedding.shape[0] == 192
+        assert embedding_np.shape[0] == 192
         # Embeddings should be normalized
-        assert np.abs(np.linalg.norm(embedding) - 1.0) < 0.1
+        assert np.abs(np.linalg.norm(embedding_np) - 1.0) < 0.1
     
     def test_embedding_consistency(self, real_audio_sample):
         """Test that same audio produces consistent embeddings."""
         audio, sr = real_audio_sample
         
-        embedding1 = get_embedding(audio, sr)
-        embedding2 = get_embedding(audio, sr)
+        embedding1 = np.array(get_embedding(audio, sr))
+        embedding2 = np.array(get_embedding(audio, sr))
         
         # Should be very similar (allowing for minor numerical differences)
         similarity = np.dot(embedding1, embedding2)
@@ -120,8 +122,8 @@ class TestSpeakerModel:
         audio1, sr1 = real_audio_sample
         audio2, sr2 = noise_audio
         
-        embedding1 = get_embedding(audio1, sr1)
-        embedding2 = get_embedding(audio2, sr2)
+        embedding1 = np.array(get_embedding(audio1, sr1))
+        embedding2 = np.array(get_embedding(audio2, sr2))
         
         # Should be different
         similarity = np.dot(embedding1, embedding2)

@@ -1,5 +1,6 @@
 # database/postgres_client.py
 
+import uuid
 from sqlalchemy import create_engine, Column, Integer, Float, String, DateTime
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
@@ -13,7 +14,7 @@ SessionLocal = sessionmaker(bind=engine)
 class User(Base):
     __tablename__ = "users"
 
-    id = Column(String, primary_key=True, index=True)
+    id = Column(String, primary_key=True, index=True, default=lambda: str(uuid.uuid4()))
     full_name = Column(String)
     email = Column(String, unique=True, index=True)
     role = Column(String)

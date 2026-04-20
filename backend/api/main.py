@@ -21,6 +21,13 @@ from database.milvus_client import (
     search_embedding,
     insert_embedding
 )
+from database.postgres_client import init_db, log_auth, create_user, get_user_by_voice_uuid, get_user_by_id
+from config.settings import RE_ENROLLMENT_PERIOD_DAYS
+from api.auth import router as auth_router, get_current_active_user, get_current_admin_user
+from core.security import get_password_hash
+from fastapi import Depends, Query
+from schemas import UserResponse
+from starlette.concurrency import run_in_threadpool
 
 # Helper for run_in_threadpool which needs a function
 def _load_audio_file(path):
@@ -36,13 +43,7 @@ def _model_extract(audio):
     return model.extract_embedding(audio)
 
 
-from database.postgres_client import init_db, log_auth, create_user, get_user_by_voice_uuid, get_user_by_id
-from config.settings import RE_ENROLLMENT_PERIOD_DAYS
-from api.auth import router as auth_router, get_current_active_user, get_current_admin_user
-from core.security import get_password_hash
-from fastapi import Depends, Query
-from schemas import UserResponse
-from starlette.concurrency import run_in_threadpool
+
 
 
 # -------------------------

@@ -44,6 +44,11 @@ class ECAPAModel:
         # Flatten to simple 1D array of features
         emb = emb.squeeze()          # removes batch dims
         emb = emb.cpu().numpy()      # numpy array (D,)
+        
+        # L2 Normalization
+        norm = np.linalg.norm(emb)
+        if norm > 0:
+            emb = emb / norm
 
         # 4. Convert to pure Python list of floats
         # JSON serialization requires native Python types

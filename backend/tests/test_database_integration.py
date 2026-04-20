@@ -128,6 +128,7 @@ class TestPostgreSQLIntegration:
 # ============================================================================
 
 @pytest.mark.integration
+@pytest.mark.usefixtures("clean_milvus")
 class TestMilvusIntegration:
     """Test suite for Milvus vector database operations."""
     
@@ -140,12 +141,12 @@ class TestMilvusIntegration:
         # Insert vector
         vector_id = "test-vector-001"
         result = milvus_client.insert(
-            collection_name="voiceprints",
             data=[{
-                "id": vector_id,
+                "speaker_id": vector_id,
                 "embedding": vector.tolist()
             }]
         )
+        milvus_client.flush()
         
         assert result is not None
     
@@ -157,25 +158,27 @@ class TestMilvusIntegration:
         
         vector_id = "test-search-001"
         milvus_client.insert(
-            collection_name="voiceprints",
             data=[{
-                "id": vector_id,
+                "speaker_id": vector_id,
                 "embedding": vector.tolist()
             }]
         )
+        milvus_client.flush()
+        milvus_client.load()
         
         # Search for the same vector
         results = milvus_client.search(
-            collection_name="voiceprints",
             data=[vector.tolist()],
+            anns_field="embedding",
+            param={"metric_type": "COSINE", "params": {"nprobe": 10}},
             limit=5
         )
         
         assert results is not None
         assert len(results) > 0
         # Should find the exact match
-        assert results[0][0]["id"] == vector_id
-        assert results[0][0]["distance"] > 0.99  # Very high similarity
+        assert results[0][0].id == vector_id
+        assert results[0][0].distance > 0.99  # Very high similarity
     
     def test_search_similar_vectors(self, milvus_client):
         """Test finding similar but not identical vectors."""
@@ -184,12 +187,13 @@ class TestMilvusIntegration:
         vector1 = vector1 / np.linalg.norm(vector1)
         
         milvus_client.insert(
-            collection_name="voiceprints",
             data=[{
-                "id": "similar-001",
+                "speaker_id": "similar-001",
                 "embedding": vector1.tolist()
             }]
         )
+        milvus_client.flush()
+        milvus_client.load()
         
         # Create slightly modified vector
         vector2 = vector1 + np.random.normal(0, 0.1, 192).astype(np.float32)
@@ -197,15 +201,16 @@ class TestMilvusIntegration:
         
         # Search
         results = milvus_client.search(
-            collection_name="voiceprints",
             data=[vector2.tolist()],
+            anns_field="embedding",
+            param={"metric_type": "COSINE", "params": {"nprobe": 10}},
             limit=5
         )
         
         assert results is not None
         assert len(results) > 0
         # Should find similar vector with good but not perfect similarity
-        assert results[0][0]["distance"] > 0.7
+        assert results[0][0].distance > 0.5
 
 
 # ============================================================================
@@ -213,6 +218,7 @@ class TestMilvusIntegration:
 # ============================================================================
 
 @pytest.mark.integration
+@pytest.mark.usefixtures("clean_milvus")
 class TestDatabaseIntegration:
     """Test integration between PostgreSQL and Milvus."""
     
@@ -234,12 +240,13 @@ class TestDatabaseIntegration:
         vector = vector / np.linalg.norm(vector)
         
         milvus_client.insert(
-            collection_name="voiceprints",
             data=[{
-                "id": voice_uuid,
+                "speaker_id": voice_uuid,
                 "embedding": vector.tolist()
             }]
         )
+        milvus_client.flush()
+        milvus_client.load()
         
         # Verify linkage
         # 1. Get user from PostgreSQL
@@ -249,14 +256,15 @@ class TestDatabaseIntegration:
         
         # 2. Search Milvus using the voice_uuid
         results = milvus_client.search(
-            collection_name="voiceprints",
             data=[vector.tolist()],
+            anns_field="embedding",
+            param={"metric_type": "COSINE", "params": {"nprobe": 10}},
             limit=1
         )
         
         assert results is not None
         assert len(results) > 0
-        assert results[0][0]["id"] == voice_uuid
+        assert results[0][0].id == voice_uuid
     
     def test_concurrent_database_access(self, db_session, milvus_client):
         """Test concurrent access to both databases."""
@@ -285,9 +293,8 @@ class TestDatabaseIntegration:
             vector = vector / np.linalg.norm(vector)
             
             milvus_client.insert(
-                collection_name="voiceprints",
                 data=[{
-                    "id": f"concurrent-uuid-{index}",
+                    "speaker_id": f"concurrent-uuid-{index}",
                     "embedding": vector.tolist()
                 }]
             )

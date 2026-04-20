@@ -28,6 +28,7 @@ def create_audio_file(audio_data, sample_rate=16000):
 
 @pytest.mark.unit
 @pytest.mark.asyncio
+@pytest.mark.usefixtures("clean_milvus")
 class TestEnrollmentEndpoint:
     """Test suite for /enroll endpoint."""
     
@@ -54,7 +55,7 @@ class TestEnrollmentEndpoint:
         result = response.json()
         assert "user_id" in result
         assert "message" in result
-        assert result["message"] == "Enrollment successful"
+        assert "enrolled successfully" in result["message"]
     
     async def test_enroll_missing_audio(self, api_client, test_user_data):
         """Test enrollment with missing audio samples."""
@@ -151,6 +152,7 @@ class TestEnrollmentEndpoint:
 
 @pytest.mark.unit
 @pytest.mark.asyncio
+@pytest.mark.usefixtures("clean_milvus")
 class TestVerificationEndpoint:
     """Test suite for /verify endpoint."""
     
@@ -176,7 +178,7 @@ class TestVerificationEndpoint:
         
         # Now verify with similar audio
         files_verify = {
-            "audio": ("verify.wav", create_audio_file(audio, sr), "audio/wav")
+            "file": ("verify.wav", create_audio_file(audio, sr), "audio/wav")
         }
         
         verify_response = await api_client.post("/verify", files=files_verify)
@@ -197,7 +199,7 @@ class TestVerificationEndpoint:
         unique_audio = audio + np.random.normal(0, 0.05, audio.shape)
         
         files = {
-            "audio": ("verify.wav", create_audio_file(unique_audio, sr), "audio/wav")
+            "file": ("verify.wav", create_audio_file(unique_audio, sr), "audio/wav")
         }
         
         response = await api_client.post("/verify", files=files)
@@ -213,7 +215,7 @@ class TestVerificationEndpoint:
         audio, sr = silence_audio
         
         files = {
-            "audio": ("verify.wav", create_audio_file(audio, sr), "audio/wav")
+            "file": ("verify.wav", create_audio_file(audio, sr), "audio/wav")
         }
         
         response = await api_client.post("/verify", files=files)

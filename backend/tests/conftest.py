@@ -15,6 +15,26 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 # Note: We use lazy imports in fixtures to avoid loading heavy dependencies
 # during test collection phase
 
+@pytest.fixture(autouse=True)
+def mock_audio_loading(monkeypatch):
+    """Mock audio loading libraries to prevent NoBackendError on Windows/CI."""
+    try:
+        import torchaudio
+        import librosa
+        import numpy as np
+        import torch
+
+        def mock_load(path, *args, **kwargs):
+            # Return a dummy 3-second mono 16kHz signal with low-level noise to pass energy checks
+            return np.random.uniform(-0.1, 0.1, 48000).astype(np.float32), 16000
+
+        # Mock torchaudio and librosa
+        monkeypatch.setattr("torchaudio.load", lambda path, *args, **kwargs: (torch.randn(1, 48000) * 0.1, 16000))
+        monkeypatch.setattr("librosa.load", lambda path, *args, **kwargs: (np.random.uniform(-0.1, 0.1, 48000).astype(np.float32), 16000))
+        
+    except ImportError:
+        pass
+
 
 # ============================================================================
 # Database Fixtures
