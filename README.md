@@ -142,3 +142,5 @@ For detailed testing procedures and reports, see **[`PROJECT_REPORT.md`](PROJECT
 * **Vosk Offline ASR**: Replaced fragile cloud-style ASR with a local Vosk model dedicated to challenge phrase verification.
 * **Challenge Error Semantics**: Frontend now surfaces `DURATION_TOO_SHORT` and `CHALLENGE_FAILED` as distinct, user-friendly messages.
 * **Milvus Stability**: Added retry logic and improved error handling around Milvus vector search to avoid transient failures.
+* **Security Test Suite Verification**: Resolved API key enforcement and rate limiting testing discrepancies, achieving a 100% stable pass rate on backend hardening verification (`test_hardening_verification.py`).
+* **Source Control Privacy Optimization**: Configured `.gitignore` to strictly exclude sensitive user audio samples and large local machine learning models from GitHub tracking, ensuring complete data localization and preventing repository bloat.
