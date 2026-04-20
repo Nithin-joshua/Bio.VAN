@@ -126,11 +126,27 @@ export const fetchChallengePhrases = async (count = 3) => {
         return data.phrases;
     } catch (error) {
         console.error("Challenge fetch error:", error);
-        // Fallback phrases if server offline
-        return [
-            "Voice authentication active",
-            "Security clearance required",
-            "System access requested"
+        // Larger pool for randomized fallback to ensure uniqueness
+        const FALLBACK_POOL = [
+            "The quick brown fox jumps over the lazy dog near the river bank",
+            "Security protocols are now active and verification is in progress",
+            "Please verify my identity using my unique voice print for access",
+            "Artificial intelligence is transforming the way we secure our digital lives",
+            "The sky above the port was the color of television, tuned to a dead channel",
+            "Voice authentication provides a secure and seamless way to log in",
+            "Delta Echo Foxtrot, authorizing access to the secure facility now",
+            "System override initiated, please confirm your authorization level immediately",
+            "Gamma Sector seven requires immediate voice confirmation for entry clearance",
+            "Neural firewalls are shielding the core as encrypted packets traverse the grid",
+            "Quantum relays hum softly while the secure uplink awaits vocal authorization",
+            "Midnight protocols engage when the chrono counter reaches zero nine three seven",
+            "Echo nine four seven, initiating silent handshake with the central authentication node",
+            "Biometric cipher keys rotate every cycle to harden the perimeter against intrusion"
         ];
+        
+        // Shuffle and pick requested number of phrases
+        return [...FALLBACK_POOL]
+            .sort(() => Math.random() - 0.5)
+            .slice(0, count);
     }
 };

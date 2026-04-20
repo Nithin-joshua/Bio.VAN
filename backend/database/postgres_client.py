@@ -1,15 +1,34 @@
 # database/postgres_client.py
 
 import uuid
-from sqlalchemy import create_engine, Column, Integer, Float, String, DateTime
+from sqlalchemy import create_engine, Column, Integer, Float, String, DateTime, event
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime
 from config.settings import POSTGRES_URL
 
 Base = declarative_base()
-engine = create_engine(POSTGRES_URL)
-SessionLocal = sessionmaker(bind=engine)
+
+# Connection pooling with production-ready settings
+engine = create_engine(
+    POSTGRES_URL,
+    pool_size=10,                    # Keep 10 connections open
+    max_overflow=20,                 # Allow 20 temporary overflow connections
+    pool_recycle=3600,              # Recycle connections after 1 hour
+    pool_pre_ping=True,             # Test connections before using (avoid stale connections)
+    echo=False,
+    connect_args={
+        'connect_timeout': 10
+    }
+)
+
+# Event listener to handle pool checkout errors
+@event.listens_for(engine, "connect")
+def set_sqlite_pragma(dbapi_conn, connection_record):
+    """Handle connection initialization"""
+    pass
+
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 class User(Base):
     __tablename__ = "users"
@@ -38,7 +57,7 @@ class AuthLog(Base):
 def init_db():
     Base.metadata.create_all(engine)
 
-def create_user(full_name: str, email: str, role: str, user_id: str, hashed_password: str = None, voice_uuid: str = None):
+def create_user(full_name: str, email: str, role: str, user_id: str, hashed_password: str = None, voice_uuid: str = None, status: str = "pending"):
     session = SessionLocal()
     try:
         # Check if user exists by ID or Email
@@ -54,7 +73,7 @@ def create_user(full_name: str, email: str, role: str, user_id: str, hashed_pass
             if role:
                 existing_user.role = role
             # Reset voice profile status and enrollment time
-            existing_user.voice_profile_status = "active"
+            existing_user.voice_profile_status = status
             existing_user.enrolled_at = datetime.utcnow()
             if voice_uuid:
                  existing_user.voice_uuid = voice_uuid
@@ -69,7 +88,7 @@ def create_user(full_name: str, email: str, role: str, user_id: str, hashed_pass
             email=email,
             role=role,
             hashed_password=hashed_password,
-            voice_profile_status="active",
+            voice_profile_status=status,
             voice_uuid=voice_uuid,
             enrolled_at=datetime.utcnow()
         )
@@ -77,6 +96,21 @@ def create_user(full_name: str, email: str, role: str, user_id: str, hashed_pass
         session.commit()
         session.refresh(new_user)
         return new_user
+    except Exception as e:
+        session.rollback()
+        raise e
+    finally:
+        session.close()
+
+def update_user_status(user_id: str, status: str):
+    session = SessionLocal()
+    try:
+        user = session.query(User).filter(User.id == user_id).first()
+        if user:
+            user.voice_profile_status = status
+            session.commit()
+            return True
+        return False
     except Exception as e:
         session.rollback()
         raise e
@@ -100,14 +134,19 @@ def get_user_by_voice_uuid(voice_uuid: str):
 
 def log_auth(speaker_id, score, decision):
     session = SessionLocal()
-    log = AuthLog(
-        speaker_id=speaker_id,
-        score=score,
-        decision=decision
-    )
-    session.add(log)
-    session.commit()
-    session.close()
+    try:
+        log = AuthLog(
+            speaker_id=speaker_id,
+            score=score,
+            decision=decision
+        )
+        session.add(log)
+        session.commit()
+    except Exception as e:
+        session.rollback()
+        raise e
+    finally:
+        session.close()
 
 def delete_user(user_id: str):
     session = SessionLocal()
@@ -130,6 +169,14 @@ def get_user_by_id(user_id: str):
     session = SessionLocal()
     try:
         return session.query(User).filter(User.id == user_id).first()
+    finally:
+        session.close()
+
+def get_user_by_email(email: str):
+    """Get user by email to check enrollment status"""
+    session = SessionLocal()
+    try:
+        return session.query(User).filter(User.email == email).first()
     finally:
         session.close()
 

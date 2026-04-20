@@ -1,5 +1,5 @@
 import React from 'react';
-import { motion } from 'framer-motion';
+import { motion, useReducedMotion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import Button from '../components/core/Button';
 import Logo from '../components/core/Logo';
@@ -9,106 +9,126 @@ import LoreTerminal from '../components/ui/LoreTerminal';
 import HeroSection from '../components/ui/HeroSection';
 
 // Animation Variants
-const staggerContainer = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      delayChildren: 0.3,
-      staggerChildren: 0.2
-    }
-  }
-};
-
-const fadeInUp = {
-  hidden: { opacity: 0, y: 60 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.6, ease: "easeOut" }
-  }
-};
-
-
 const HomePage = () => {
-  return (
-    <div className="page-container home-page">
-      <SystemStatus />
+  const shouldReduceMotion = useReducedMotion();
 
+  const fadeInUp = {
+    initial: { opacity: 0, y: shouldReduceMotion ? 0 : 40 },
+    animate: {
+      opacity: 1,
+      y: 0,
+      transition: { 
+        duration: shouldReduceMotion ? 0 : 0.6, 
+        ease: "easeOut" 
+      }
+    }
+  };
+
+  const staggerContainer = {
+    animate: {
+      transition: {
+        staggerChildren: 0.1
+      }
+    }
+  };
+
+  return (
+    <motion.div 
+      className="home-page"
+      initial="initial"
+      animate="animate"
+      exit="exit"
+      style={{ minHeight: '100vh', position: 'relative' }}
+    >
       <HeroSection />
 
-      <motion.div
-        className="features-grid"
-        variants={staggerContainer}
-        initial="hidden"
-        whileInView="visible"
-        viewport={{ once: false, amount: 0.1 }}
-      >
-        <motion.div variants={fadeInUp}>
-          <Card title="VOICE PRINTING" status="ACTIVE">
-            <h3 className="card-title" style={{ color: 'var(--neon-blue)' }}>UNIQUE SPECTRAL ID</h3>
-            <p className="card-text">
-              Just like a fingerprint, your voice has a unique signature. We map over 1000 data points to ensure it&apos;s really you.
+      <section className="section-container">
+        <div className="text-container">
+          <motion.div variants={fadeInUp} initial="initial" whileInView="animate" viewport={{ once: true }}>
+            <div className="status-pill" style={{ marginBottom: '1.5rem' }}>
+              <span className="status-indicator active"></span>
+              CORE TECHNOLOGY
+            </div>
+            <h2 className="text-h2">The Future of Voice Authorization</h2>
+            <p className="text-body" style={{ fontSize: '1.1rem' }}>
+              Bio.V is the next generation of identity security. No passwords, no hardware tokens, no friction. Just you.
             </p>
-          </Card>
-        </motion.div>
+          </motion.div>
+        </div>
 
-        <motion.div variants={fadeInUp}>
-          <Card title="LIVENESS CHECK" status="ARMED">
-            <h3 className="card-title" style={{ color: 'var(--neon-purple)' }}>ANTI-SPOOFING AI</h3>
-            <p className="card-text">
-              Our system distinguishes between live speech and recordings, preventing replay attacks and synthetic voice fraud.
-            </p>
-          </Card>
-        </motion.div>
+        <motion.div 
+          className="feature-grid"
+          variants={staggerContainer}
+          initial="initial"
+          whileInView="animate"
+          viewport={{ once: true, amount: 0.1 }}
+          style={{ 
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))',
+            gap: '2rem',
+            marginTop: '2rem'
+          }}
+        >
+          <motion.div variants={fadeInUp}>
+            <Card title="YOUR UNIQUE VOICE" status="LIVE">
+              <h3 className="card-title" style={{ color: 'var(--neon-blue)', fontFamily: 'var(--font-header)', fontSize: '1rem', letterSpacing: '1px' }}>ONE-OF-A-KIND ID</h3>
+              <p className="card-text">
+                Your voice is unique, just like a fingerprint. We use your natural speech patterns to make sure only you can access your account.
+              </p>
+            </Card>
+          </motion.div>
 
-        <motion.div variants={fadeInUp}>
-          <Card title="PRIVACY FIRST" status="LOCKED">
-            <h3 className="card-title" style={{ color: 'var(--neon-green)' }}>ZERO-KNOWLEDGE STORAGE</h3>
-            <p className="card-text">
-              Your audio is never stored. We convert it to a mathematical hash that cannot be reversed, keeping your data safe.
-            </p>
-          </Card>
-        </motion.div>
+          <motion.div variants={fadeInUp}>
+            <Card title="INSTANT SECURITY" status="READY">
+              <h3 className="card-title" style={{ color: 'var(--neon-purple)', fontFamily: 'var(--font-header)', fontSize: '1rem', letterSpacing: '1px' }}>REAL-TIME PROTECTION</h3>
+              <p className="card-text">
+                Our system makes sure it’s really you speaking, not a recording. Your account stays safe from spoofing and fraud.
+              </p>
+            </Card>
+          </motion.div>
 
-        {/* EXTRA CARDS FOR SCROLL EFFECT */}
-        <motion.div variants={fadeInUp}>
-          <Card title="NEURAL DEFENSE" status="PROTECTED">
-            <h3 className="card-title" style={{ color: 'var(--neon-blue)' }}>RAWNET2 ANTI-SPOOFING</h3>
-            <p className="card-text">
-              Features a deep neural network trained on ASVspoof data to detect sub-audible artifacts in AI-cloned voices.
-            </p>
-          </Card>
-        </motion.div>
+          <motion.div variants={fadeInUp}>
+            <Card title="YOUR PRIVACY" status="LOCKED">
+              <h3 className="card-title" style={{ color: 'var(--neon-green)', fontFamily: 'var(--font-header)', fontSize: '1rem', letterSpacing: '1px' }}>SAFE DATA STORAGE</h3>
+              <p className="card-text">
+                We never store your actual audio. Your voice is turned into a secure digital code that can&apos;t be reversed or stolen.
+              </p>
+            </Card>
+          </motion.div>
 
-        <motion.div variants={fadeInUp}>
-          <Card title="ADAPTIVE SECURITY" status="DYNAMIC">
-            <h3 className="card-title" style={{ color: 'var(--neon-red)' }}>SMART THRESHOLDING</h3>
-            <p className="card-text">
-              Verification difficulty automatically adjusts based on liveness confidence. High confidence lowers friction; low confidence locks it down.
-            </p>
-          </Card>
-        </motion.div>
+          <motion.div variants={fadeInUp}>
+            <Card title="SMART DEFENSE" status="PROTECTED">
+              <h3 className="card-title" style={{ color: 'var(--neon-blue)', fontFamily: 'var(--font-header)', fontSize: '1rem', letterSpacing: '1px' }}>AI-POWERED ACCURACY</h3>
+              <p className="card-text">
+                Advanced technology works in the background to detect even the most realistic fake or cloned voices.
+              </p>
+            </Card>
+          </motion.div>
 
-        <motion.div variants={fadeInUp}>
-          <Card title="IDENTITY INTEGRITY" status="VERIFIED">
-            <h3 className="card-title" style={{ color: 'var(--text-primary)' }}>1:N DEDUPLICATION</h3>
-            <p className="card-text">
-              Prevents duplicate profiles by scanning the entire voice database before enrollment. One voice, one identity.
-            </p>
-          </Card>
-        </motion.div>
-      </motion.div>
+          <motion.div variants={fadeInUp}>
+            <Card title="ADAPTIVE ACCESS" status="ACTIVE">
+              <h3 className="card-title" style={{ color: 'var(--neon-red)', fontFamily: 'var(--font-header)', fontSize: '1rem', letterSpacing: '1px' }}>EASY LOGIN</h3>
+              <p className="card-text">
+                The system recognizes you instantly in almost any environment, adjusting automatically to background noise.
+              </p>
+            </Card>
+          </motion.div>
 
-      <motion.div
-        variants={fadeInUp}
-        initial="hidden"
-        whileInView="visible"
-        viewport={{ once: false }}
-      >
+          <motion.div variants={fadeInUp}>
+            <Card title="SECURE PROFILES" status="VERIFIED">
+              <h3 className="card-title" style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-header)', fontSize: '1rem', letterSpacing: '1px' }}>ONE PERSON, ONE ID</h3>
+              <p className="card-text">
+                Every profile is checked against our secure network to prevent duplicate accounts and keep the system fair.
+              </p>
+            </Card>
+          </motion.div>
+        </motion.div>
+      </section>
+
+      <div className="section-container">
         <LoreTerminal />
-      </motion.div>
-    </div>
+      </div>
+    </motion.div>
   );
 };
 

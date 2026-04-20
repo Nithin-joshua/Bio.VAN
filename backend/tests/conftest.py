@@ -139,9 +139,11 @@ async def api_client():
     """Provide async HTTP client for API testing."""
     from httpx import AsyncClient, ASGITransport
     from api.main import app
+    from config.settings import BIO_VAN_API_KEY
     
+    headers = {"x-api-key": BIO_VAN_API_KEY}
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as client:
+    async with AsyncClient(transport=transport, base_url="http://test", headers=headers) as client:
         yield client
 
 

@@ -1,143 +1,214 @@
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Orbitron:wght@400;500;700;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&family=Orbitron:wght@400;500;700;900&family=Inter:wght@400;500;600&display=swap');
 
 :root {
   /* --- COLOR PALETTE --- */
   --bg-dark: #050508;
-  /* Deepest Black-Blue */
   --bg-panel: #0a0f14;
-  /* Slightly lighter for panels */
 
   /* NEON ACCENTS */
-  --neon-blue: #00f3ff;
-  --neon-blue-dim: rgba(0, 243, 255, 0.1);
-  --neon-blue-glow: rgba(0, 243, 255, 0.5);
-
-  --neon-purple: #bc13fe;
-  --neon-purple-dim: rgba(188, 19, 254, 0.1);
+  --neon-teal: #00FFC8; /* PRIMARY: Refined Teal */
+  --neon-blue: #00E0FF; /* SECONDARY: Subtle Blue */
+  --neon-purple: #BC13FE; /* ACCENT: Purple for highlights only */
+  
+  --neon-teal-dim: rgba(0, 255, 200, 0.1);
+  --neon-teal-glow: rgba(0, 255, 200, 0.35); /* Reduced glow intensity */
+  --hero-text: #E0FFFF; /* Light Cyan for Hero Heading */
+  --neon-blue-dim: rgba(0, 224, 255, 0.08);
 
   --neon-green: #0aff68;
   --neon-red: #ff2a2a;
+  --neon-yellow: #fdfd66;
 
-  /* TEXT */
-  --text-primary: #e0faff;
-  --text-secondary: #8daac0;
-  /* Lightened for better contrast */
-  --text-muted: #3a4b55;
+  /* TEXT REFINEMENT */
+  --text-primary: #ffffff;
+  --text-secondary: #e2eff8; /* Brighter for better readability */
+  --text-muted: #a1b5c2;
+  --text-on-accent: #050508;
 
   /* FONTS */
-  --font-header: 'Orbitron', list-ui, sans-serif;
+  --font-header: 'Orbitron', sans-serif;
+  --font-body: 'Inter', sans-serif;
   --font-mono: 'JetBrains Mono', monospace;
 
-  /* GLASSMORPHISM */
-  --glass-bg: rgba(10, 15, 20, 0.6);
-  --glass-border: 1px solid rgba(0, 243, 255, 0.15);
-  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  /* GLASSMORPHISM REFINE */
+  --glass-bg: rgba(8, 12, 18, 0.85);
+  --glass-border: 1px solid rgba(0, 255, 200, 0.15);
+  --glass-shadow: 0 12px 40px rgba(0, 0, 0, 0.8), inset 0 1px 1px rgba(255, 255, 255, 0.08);
   --backdrop-blur: blur(12px);
 }
 
-/* --- BUTTON STYLES --- */
+/* --- BUTTON REFINEMENT --- */
 .core-btn {
   font-family: var(--font-header);
-  padding: 12px 24px;
-  background: rgba(0, 20, 25, 0.6);
-  /* Slightly more opaque background */
-  border: 1px solid var(--neon-blue);
-  /* Thinner but clearer border */
-  color: var(--neon-blue);
+  padding: 14px 28px;
+  border: 1px solid var(--neon-teal);
   text-transform: uppercase;
-  letter-spacing: 2px;
-  font-size: 0.9rem;
+  letter-spacing: 1.5px; /* Reduced excessive spacing */
+  font-size: 0.85rem;
+  font-weight: 700;
   cursor: pointer;
-  transition: all 0.2s ease-in-out;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
   position: relative;
   overflow: hidden;
-  box-shadow: 0 0 5px var(--neon-blue-dim);
-  backdrop-filter: blur(4px);
-  min-width: 180px;
   display: inline-flex;
   justify-content: center;
   align-items: center;
+  gap: 10px;
+  min-width: 200px;
+  min-height: 48px; /* Critical UX Fix */
+  border-radius: 4px;
 }
 
-.core-btn:hover {
-  background: var(--neon-blue);
-  color: var(--bg-dark);
-  box-shadow: 0 0 20px var(--neon-blue-glow);
-  font-weight: bold;
-  transform: skew(-10deg);
+/* PRIMARY CTA: SOLID TEAL + CONTROLLED GLOW */
+.core-btn.primary {
+  background: var(--neon-teal);
+  color: #000000; /* Pure black for maximum contrast */
+  box-shadow: 0 0 20px var(--neon-teal-glow);
+  border: none;
+  font-weight: 900;
 }
 
-.core-btn:active {
-  transform: scale(0.95) skew(-10deg);
+.core-btn.primary:hover {
+  background: #ffffff;
+  color: #000000;
+  box-shadow: 0 0 30px rgba(255, 255, 255, 0.6);
+  transform: translateY(-2px);
 }
 
+/* SECONDARY CTA: OUTLINED + SUBTLE GLOW */
 .core-btn.secondary {
-  border-color: var(--text-secondary);
-  color: var(--text-secondary);
-  box-shadow: none;
+  background: rgba(0, 255, 200, 0.1); /* Slight fill for visibility */
+  color: var(--neon-teal);
+  border: 2px solid var(--neon-teal); /* Thicker border */
+  font-weight: 900;
 }
 
 .core-btn.secondary:hover {
-  background: var(--text-secondary);
-  color: var(--bg-dark);
-  box-shadow: 0 0 15px rgba(94, 122, 138, 0.5);
+  background: var(--neon-teal);
+  color: #000000;
+  box-shadow: 0 0 20px var(--neon-teal-glow);
+  transform: translateY(-2px);
+}
+
+.core-btn.lg {
+  padding: 18px 36px;
+  font-size: 1rem;
+}
+
+.core-btn.sm {
+  padding: 8px 16px;
+  font-size: 0.7rem;
+  min-width: 120px;
+}
+
+.core-btn:active {
+  transform: scale(0.98);
 }
 
 .core-btn:disabled {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: not-allowed;
-  border-color: var(--text-muted);
-  color: var(--text-muted);
-  box-shadow: none;
   pointer-events: none;
-  background: rgba(0, 0, 0, 0.3);
 }
 
-/* --- DESIGN REVAMP UTILITIES --- */
+/* --- TYPOGRAPHY & LAYOUT UTILITIES --- */
+p, .card-text {
+  font-family: var(--font-body);
+  line-height: 1.7; /* Increased for readability */
+  max-width: 70ch; /* Optimal reading width */
+  color: var(--text-secondary);
+}
 
-/* Massive Typography */
-.text-massive {
+.text-overlay {
+  background: linear-gradient(to bottom, rgba(5, 8, 10, 0.4), rgba(5, 8, 10, 0.8));
+  backdrop-filter: var(--backdrop-blur);
+  border-radius: 12px;
+  padding: 2rem;
+  border: var(--glass-border);
+}
+
+/* Typography Hierarchy Classes */
+.text-h1 {
   font-family: var(--font-header);
-  font-size: clamp(3rem, 12vw, 9rem);
+  font-size: clamp(3rem, 10vw, 7rem); /* Adjusted for better balance */
   font-weight: 900;
-  line-height: 0.9;
+  letter-spacing: 0.05em; /* Reduced excessive spacing */
   text-transform: uppercase;
-  letter-spacing: -0.04em;
-  color: var(--text-primary);
-  margin: 0;
-  padding: 0;
+  color: var(--neon-teal); /* Solid Primary Color */
+  margin-bottom: 1.5rem;
+  text-shadow: 0 0 20px var(--neon-teal-glow); /* Reduced glow */
 }
 
-/* Masked Gradient Text */
+/* SUB-HEADINGS */
+.text-h2 {
+  font-family: var(--font-header);
+  font-size: clamp(1.5rem, 4vw, 2.5rem);
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-primary);
+  margin-bottom: 1rem;
+}
+
+.text-h3 {
+  font-family: var(--font-header);
+  font-size: 1.1rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--neon-teal);
+}
+
+.text-body {
+  font-family: var(--font-body);
+  font-size: 1rem;
+  line-height: 1.6;
+  color: var(--text-secondary);
+}
+
+.text-system {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+}
+
 .text-gradient-mask {
-  background: linear-gradient(45deg,
-      #ffffff 0%,
-      var(--neon-blue) 40%,
-      var(--neon-purple) 60%,
-      #ffffff 100%);
-  background-size: 300% 300%;
+  background: linear-gradient(180deg, #fff 0%, rgba(255, 255, 255, 0.4) 100%);
   -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
   background-clip: text;
-  color: transparent;
-  will-change: background-position;
-  animation: gradient-shift 8s ease infinite;
+  opacity: 0.9;
+}
+
+/* Custom Dividers */
+.cyber-divider {
+  height: 1px;
+  width: 100%;
+  background: linear-gradient(90deg, transparent, var(--neon-blue-dim), transparent);
+  position: relative;
+  margin: 2rem 0;
+}
+
+.cyber-divider::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 4px;
+  height: 4px;
+  background: var(--neon-blue);
+  border-radius: 50%;
+  box-shadow: 0 0 10px var(--neon-blue);
 }
 
 @keyframes gradient-shift {
-  0% {
-    background-position: 0% 50%;
-  }
-
-  50% {
-    background-position: 100% 50%;
-  }
-
-  100% {
-    background-position: 0% 50%;
-  }
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
 }
 
-/* Fluid Entrance Container */
 .fluid-container {
   overflow: hidden;
   position: relative;

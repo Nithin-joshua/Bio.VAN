@@ -87,6 +87,9 @@ torchaudio==2.1.2
 torchinfo==1.8.0
 tqdm==4.67.1
 typer-slim==0.21.1
+torchinfo==1.8.0
+tqdm==4.67.1
+typer-slim==0.21.1
 typing-inspection==0.4.2
 typing_extensions==4.15.0
 tzdata==2025.3
@@ -94,3 +97,4 @@ urllib3==2.6.3
 uvicorn==0.40.0
 win32_setctime==1.2.0
 python-jose[cryptography]
+slowapi==0.1.9

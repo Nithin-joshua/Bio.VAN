@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { useReducedMotion } from 'framer-motion';
 import '../../styles/components.css';
 
 // Narrative text displayed in the terminal to build immersion
-const LORE_TEXT = "Bio.V operates as a decentralized voice authentication protocol, leveraging spectral analysis to map unique vocal identifiers to immutable cryptographic ledgers. In an era where synthetic media compromises traditional security, our neural mesh ensures identity verification remains absolute, processing millions of bio-signatures daily with zero-knowledge proof verification.";
+const LORE_TEXT = "Bio.V is a secure way to sign in using nothing but your voice. We use advanced technology to create a unique voice profile for every user, ensuring privacy and safety without the need for traditional passwords. Your data is encrypted and stays private, giving you instant access with total peace of mind.";
 
 /**
  * Atmospheric Terminal Component
@@ -11,6 +12,7 @@ const LORE_TEXT = "Bio.V operates as a decentralized voice authentication protoc
  */
 const LoreTerminal = () => {
     const [displayedText, setDisplayedText] = useState('');
+    const shouldReduceMotion = useReducedMotion();
     const [metrics, setMetrics] = useState({
         latency: 12,
         encryption: 'QUANTUM-256',
@@ -20,6 +22,11 @@ const LoreTerminal = () => {
     // EFFECT: Typewriter Animation
     // Recursively adds characters to the display state with random delays
     useEffect(() => {
+        if (shouldReduceMotion) {
+            setDisplayedText(LORE_TEXT);
+            return;
+        }
+
         let index = 0;
         let timeoutId;
         setDisplayedText(''); // Reset on mount
@@ -72,7 +79,7 @@ const LoreTerminal = () => {
                 <span className="lore-id" style={{ opacity: 0.7 }}>ID: 994-ALPHA</span>
             </div>
 
-            <div className="lore-content">
+            <div className="lore-content text-overlay" style={{ background: 'rgba(5, 8, 10, 0.4)', margin: '1rem', border: '1px solid rgba(0, 243, 255, 0.1)' }}>
                 <span style={{ color: 'var(--text-secondary)' }}>
                     {displayedText}
                 </span>
@@ -81,13 +88,13 @@ const LoreTerminal = () => {
 
             <div className="lore-footer">
                 <div className="lore-stat">
-                    NODE: <span className="neon-blue-text glow-text">{metrics.node}</span>
+                    NODE: <span className="neon-blue-text glow-text" style={{ color: 'var(--neon-blue)' }}>{metrics.node}</span>
                 </div>
                 <div className="lore-stat">
-                    LATENCY: <span className={metrics.latency > 25 ? "neon-red-text" : "neon-green-text"}>{metrics.latency}ms</span>
+                    LATENCY: <span className={metrics.latency > 25 ? "neon-red-text" : "neon-green-text"} style={{ color: metrics.latency > 25 ? 'var(--neon-red)' : 'var(--neon-green)' }}>{metrics.latency}ms</span>
                 </div>
                 <div className="lore-stat">
-                    ENCRYPTION: <span className="neon-purple-text">{metrics.encryption}</span>
+                    ENCRYPTION: <span className="neon-purple-text" style={{ color: 'var(--neon-purple)' }}>{metrics.encryption}</span>
                 </div>
             </div>
 

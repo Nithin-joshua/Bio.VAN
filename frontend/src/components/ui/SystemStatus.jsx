@@ -24,38 +24,43 @@ const SystemStatus = () => {
 
   return (
     <motion.div
-      className="system-status-bar"
-      initial={{ y: -100, opacity: 0 }}
+      className="system-status-bar glass-card"
+      initial={{ y: -50, opacity: 0 }}
       animate={{ y: 0, opacity: 1 }}
-      transition={{ duration: 0.6, ease: "easeOut", delay: 0.2 }}
+      transition={{ duration: 0.8, ease: "easeOut" }}
+      style={{
+        borderRadius: '0 0 16px 16px',
+        borderTop: 'none',
+        padding: '0.5rem 2rem',
+        background: 'rgba(5, 10, 15, 0.4)',
+        backdropFilter: 'blur(10px)',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '2rem',
+        fontSize: '0.65rem',
+        fontFamily: 'var(--font-mono)'
+      }}
     >
       <div className="status-item">
-        <span className="status-label">SYS.CPU:</span>
-        <span className="status-value">{metrics.cpu.toFixed(1)}%</span>
-        <div className="status-graph">
-          <div className="status-bar-fill" style={{ width: `${metrics.cpu}%` }}></div>
-        </div>
+        <span className="status-label" style={{ color: 'var(--neon-blue)', opacity: 0.8 }}>CORE.THR:</span>
+        <span className="status-value" style={{ fontWeight: 'bold' }}>{metrics.cpu.toFixed(0)}%</span>
       </div>
       <div className="status-item">
-        <span className="status-label">MEM.ALLOC:</span>
-        <span className="status-value">{metrics.memory.toFixed(1)}%</span>
-        <div className="status-graph">
-          <div className="status-bar-fill" style={{ width: `${metrics.memory}%`, backgroundColor: metrics.memory > 80 ? 'var(--neon-pink)' : 'var(--neon-blue)' }}></div>
-        </div>
+        <span className="status-label" style={{ color: 'var(--neon-blue)', opacity: 0.8 }}>MEM_SYNC:</span>
+        <span className="status-value" style={{ fontWeight: 'bold' }}>{metrics.memory.toFixed(0)}%</span>
       </div>
       <div className="status-item mobile-hide">
-        <span className="status-label">NET.TRAFFIC:</span>
-        <span className="status-value">{metrics.net.toFixed(1)} TB/s</span>
+        <span className="status-label" style={{ color: 'var(--neon-blue)', opacity: 0.8 }}>DATA_LINK:</span>
+        <span className="status-value" style={{ fontWeight: 'bold' }}>{metrics.net.toFixed(1)} GB/s</span>
       </div>
       <div className="status-item">
-        <span className="status-label">THREAT.LVL:</span>
-        <span className="status-value" style={{ color: metrics.threat === 'LOW' ? 'var(--neon-green)' : 'var(--neon-pink)' }}>
-          {metrics.threat}
-        </span>
+        <div className="status-pill" style={{ padding: '2px 8px', borderColor: metrics.threat === 'LOW' ? 'rgba(0, 255, 150, 0.2)' : 'rgba(255, 50, 50, 0.2)' }}>
+          <span className={`status-indicator ${metrics.threat === 'LOW' ? 'active' : 'locked'}`}></span>
+          {metrics.threat} PREVIEW
+        </div>
       </div>
-      <div className="status-item mobile-hide">
-        <span className="status-label">UPTIME:</span>
-        <span className="status-value">8764h 21m</span>
+      <div className="status-item mobile-hide" style={{ marginLeft: 'auto' }}>
+        <span className="status-label" style={{ opacity: 0.5 }}>IDENT_GATEWAY // NODE_8A</span>
       </div>
     </motion.div>
   );

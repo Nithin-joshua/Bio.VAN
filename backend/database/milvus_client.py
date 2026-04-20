@@ -86,6 +86,13 @@ def init_milvus(retries: int = 10, delay: int = 2):
 
 
 def insert_embedding(speaker_id: str, embedding: list[float]):
+    """
+    Insert or update embedding in Milvus.
+    
+    Args:
+        speaker_id: Should be voice_uuid from Postgres (not user_id) to maintain consistency
+        embedding: 192-dim ECAPA embedding
+    """
     collection = init_milvus()
 
     # Delete existing if present (Upsert behavior)
@@ -101,19 +108,36 @@ def insert_embedding(speaker_id: str, embedding: list[float]):
         }
     ])
 
-    # 🔴 REQUIRED
+    # 🔴 REQUIRED - flush ensures data is searchable
     collection.flush()
+    print(f"DEBUG: Inserted/Updated embedding for voice_uuid {speaker_id}")
 
 
 def search_embedding(embedding: list[float], top_k: int = 1, speaker_id: str = None):
+    """
+    Search for matching embedding in Milvus.
+    
+    Args:
+        embedding: Query embedding (192-dim ECAPA)
+        top_k: Number of results to return
+        speaker_id: Optional filter by voice_uuid from Postgres
+        
+    Returns:
+        List of search results (hit objects with .id and .distance)
+    """
     collection = init_milvus()
 
-    # 🔴 REQUIRED for fresh inserts
-    collection.load()
+    # Collection.load() is idempotent - safe to call multiple times
+    # Only needed if collection was released
+    try:
+        collection.load()
+    except Exception as e:
+        print(f"WARNING: Failed to load collection: {e}")
+        # Continue anyway - might still be loaded
 
     search_params = {
         "metric_type": "COSINE",
-        "params": {"nprobe": 10},
+        "params": {"nprobe": 10},  # Number of clusters to search
     }
 
     expr = None
@@ -122,9 +146,9 @@ def search_embedding(embedding: list[float], top_k: int = 1, speaker_id: str = N
 
     try:
         if speaker_id:
-             print(f"DEBUG: Milvus Search (Speaker ID: {speaker_id})")
+             print(f"DEBUG: Milvus Search (Filtered by voice_uuid: {speaker_id})")
         else:
-             print(f"DEBUG: Milvus Search (Global Scan)")
+             print(f"DEBUG: Milvus Search (Global Scan across all speakers)")
 
         results = collection.search(
             data=[embedding],
@@ -132,29 +156,38 @@ def search_embedding(embedding: list[float], top_k: int = 1, speaker_id: str = N
             param=search_params,
             limit=top_k,
             expr=expr,
-            consistency_level="Strong",
+            consistency_level="Strong",  # Ensure consistency after insert/update
         )
     except Exception as e:
         print(f"ERROR: Milvus Search Failed: {e}")
-        return []
+        raise e
 
     if not results or not results[0]:
         print("DEBUG: Milvus - No matches found.")
         return []
 
-    print(f"DEBUG: Milvus - Found {len(results[0])} matches. Top Score: {results[0][0].distance}")
+    print(f"DEBUG: Milvus - Found {len(results[0])} matches. Top Score: {results[0][0].distance:.4f}")
     return results[0]
 
 # Alias for testing consistency
 get_milvus_client = init_milvus
 
 def delete_embedding(voice_uuid: str):
+    """
+    Delete embedding from Milvus.
+    
+    Args:
+        voice_uuid: The voice_uuid from Postgres (Milvus primary key)
+    """
     collection = init_milvus()
     try:
-        # Delete based on primary key (speaker_id in Milvus matches voice_uuid from Postgres)
+        # Delete based on primary key (speaker_id in Milvus = voice_uuid from Postgres)
         expr = f"speaker_id == '{voice_uuid}'"
         collection.delete(expr)
-        print(f"DEBUG: Deleted embedding for UUID {voice_uuid}")
+        collection.flush()  # Ensure deletion is persisted
+        print(f"DEBUG: Successfully deleted embedding for voice_uuid {voice_uuid}")
+        return True
     except Exception as e:
-        print(f"ERROR: Failed to delete embedding for UUID {voice_uuid}: {e}")
+        print(f"ERROR: Failed to delete embedding for voice_uuid {voice_uuid}: {e}")
+        raise e
 

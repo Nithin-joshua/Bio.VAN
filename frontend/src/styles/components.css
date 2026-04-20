@@ -145,6 +145,20 @@
     box-shadow: 0 0 5px var(--neon-blue);
 }
 
+/* --- LAYOUT UTILITIES --- */
+.section-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 6rem 2rem;
+  position: relative;
+  z-index: 10;
+}
+
+.text-container {
+  max-width: 700px;
+  margin-bottom: 3rem;
+}
+
 @media (max-width: 768px) {
     .mobile-hide {
         display: none;
@@ -155,6 +169,10 @@
         flex-wrap: wrap;
         gap: 0.5rem;
         justify-content: center;
+    }
+
+    .section-container {
+        padding: 4rem 1.5rem;
     }
 }
 
@@ -187,18 +205,211 @@
 
 .cyber-input:focus {
     outline: none;
-    border-color: var(--neon-blue);
-    box-shadow: 0 0 10px rgba(0, 243, 255, 0.2);
+    border-color: var(--neon-teal);
+    box-shadow: 0 0 15px var(--neon-teal-dim);
     background: rgba(10, 15, 20, 0.9);
 }
 
-/* --- GLASS CARD --- */
+/* --- GLASS CARD REFINE --- */
 .glass-card {
-    background: rgba(10, 14, 18, 0.7);
-    border: 1px solid rgba(0, 243, 255, 0.1);
-    backdrop-filter: blur(10px);
-    box-shadow: 0 4px 30px rgba(0, 0, 0, 0.5);
+    background: var(--glass-bg);
+    border: var(--glass-border);
+    backdrop-filter: var(--backdrop-blur);
+    box-shadow: var(--glass-shadow);
+    border-radius: 12px;
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.glass-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, transparent 40%);
+    pointer-events: none;
+    z-index: 0;
+}
+
+.glass-card:hover {
+    transform: translateY(-4px);
+    border-color: rgba(0, 255, 200, 0.3);
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.9);
+}
+
+/* --- UNIFIED SYSTEM CARD (Terminal + Form combined) --- */
+.unified-system-card {
+    background: rgba(8, 12, 18, 0.9);
+    border: 1px solid rgba(0, 255, 200, 0.2);
+    backdrop-filter: blur(20px);
+    border-radius: 16px;
+    box-shadow: 0 20px 80px rgba(0, 0, 0, 0.9);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.unified-system-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, var(--neon-teal), transparent);
+    pointer-events: none;
+    opacity: 0.4;
+}
+
+.unified-system-card .system-section {
+    padding: 2rem;
+    position: relative;
+    flex: 1;
+}
+
+.unified-system-card .system-divider {
+    height: 1px;
+    width: 100%;
+    background: linear-gradient(90deg, transparent, rgba(0, 255, 200, 0.1), transparent);
+    margin: 0;
+}
+
+/* Horizontal layout support for unified card */
+.unified-system-card.horizontal {
+    flex-direction: row;
+}
+
+.unified-system-card.horizontal .system-divider {
+    width: 1px;
+    height: auto;
+    background: linear-gradient(180deg, transparent, rgba(0, 255, 200, 0.1), transparent);
+}
+
+/* --- INTEGRATED TERMINAL OVERLAY --- */
+.terminal-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(5, 8, 10, 0.7);
+    backdrop-filter: blur(4px);
+    display: flex;
+    flex-direction: column;
+    padding: 1.5rem;
+    font-family: var(--font-mono);
+    pointer-events: none;
+    z-index: 5;
+    border: 1px solid rgba(0, 255, 200, 0.1);
     border-radius: 8px;
+}
+
+.terminal-overlay-header {
+    font-size: 0.7rem;
+    color: var(--neon-teal);
+    opacity: 0.8;
+    margin-bottom: 1rem;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+}
+
+.terminal-overlay-body {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.terminal-line {
+    font-size: 0.85rem;
+    color: var(--neon-teal);
+    opacity: 0.9;
+    display: flex;
+    gap: 0.5rem;
+}
+
+.terminal-line.status {
+    font-weight: bold;
+    text-transform: uppercase;
+    font-size: 1rem;
+}
+
+.terminal-line.success { color: var(--neon-green); }
+.terminal-line.error { color: var(--neon-red); }
+.terminal-line.info { color: var(--neon-blue); }
+
+.scan-line {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: rgba(0, 255, 200, 0.1);
+    animation: scan 4s linear infinite;
+    pointer-events: none;
+}
+
+@keyframes scan {
+    from { transform: translateY(-100%); }
+    to { transform: translateY(500%); }
+}
+
+/* --- STEP INDICATOR REFINEMENT --- */
+.step-indicator-container {
+    padding: 2rem 0 !important;
+}
+
+.step-item.active .step-number {
+    box-shadow: 0 0 25px var(--neon-blue-glow) !important;
+    border-color: var(--neon-blue) !important;
+    animation: step-pulse 2s infinite;
+}
+
+@keyframes step-pulse {
+    0%, 100% { transform: scale(1); box-shadow: 0 0 20px var(--neon-blue-dim); }
+    50% { transform: scale(1.05); box-shadow: 0 0 30px var(--neon-blue-glow); }
+}
+
+.step-connector.active {
+    background: linear-gradient(90deg, var(--neon-blue), var(--neon-purple)) !important;
+    opacity: 0.8 !important;
+    box-shadow: 0 0 10px var(--neon-blue-dim);
+}
+
+/* --- STATUS PILL --- */
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 12px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid var(--neon-blue-dim);
+  border-radius: 20px;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: bold;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.status-indicator {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--neon-blue);
+  box-shadow: 0 0 8px var(--neon-blue);
+}
+
+.status-indicator.active {
+  background: var(--neon-green);
+  box-shadow: 0 0 8px var(--neon-green);
+}
+
+.status-indicator.locked {
+  background: var(--neon-red);
+  box-shadow: 0 0 8px var(--neon-red);
 }
 
 /* --- LORE TERMINAL --- */
@@ -267,4 +478,51 @@
 
 .blink-text {
     animation: blink-opacity 2s infinite;
+}
+
+/* --- LOGO STYLES REFINE --- */
+.logo-text {
+    font-family: var(--font-header);
+    font-weight: 900;
+    color: var(--neon-teal);
+    letter-spacing: 2px;
+    font-size: 1.5rem;
+    text-shadow: 0 0 10px var(--neon-teal-glow);
+}
+
+.logo-cursor {
+    color: var(--neon-teal);
+    margin: 0 4px;
+    opacity: 0.8;
+}
+
+.logo-glitch {
+    color: var(--neon-teal);
+    position: relative;
+    font-weight: 900;
+}
+
+/* Simplified logo - no excessive glitching */
+.logo-glitch::before,
+.logo-glitch::after {
+    display: none;
+}
+
+/* --- ACCESSIBILITY: REDUCED MOTION --- */
+@media (prefers-reduced-motion: reduce) {
+    .terminal-log,
+    .cursor-blink,
+    .cursor-block,
+    .blink-text,
+    .status-bar-fill {
+        animation: none !important;
+        transition: none !important;
+        opacity: 1 !important;
+    }
+
+    .cursor-blink,
+    .cursor-block {
+        border-left: 8px solid var(--neon-green);
+        background: transparent;
+    }
 }

@@ -1,4 +1,5 @@
 import React, { useEffect, useRef } from 'react';
+import { useReducedMotion } from 'framer-motion';
 import '../../styles/theme.css';
 
 // Particle Class - Moved outside to comply with React Hooks rules
@@ -10,10 +11,10 @@ class Particle {
   reset(canvas) {
     this.x = Math.random() * canvas.width;
     this.y = Math.random() * canvas.height;
-    this.size = Math.random() * 3 + 2; // Larger: 2px to 5px
-    this.speedY = Math.random() * 0.5 + 0.2; // Faster
-    this.opacity = Math.random() * 0.5 + 0.2; // Min opacity 0.2
-    this.fadeDirection = Math.random() > 0.5 ? 0.01 : -0.01;
+    this.size = Math.random() * 4 + 2; // Further increased size: 2px to 6px
+    this.speedY = Math.random() * 0.3 + 0.1; 
+    this.opacity = Math.random() * 0.5 + 0.3; // Increased min opacity to 0.3
+    this.fadeDirection = Math.random() > 0.5 ? 0.005 : -0.005;
   }
 
   update(canvas) {
@@ -21,7 +22,7 @@ class Particle {
     this.opacity += this.fadeDirection;
 
     // Pulse opacity
-    if (this.opacity <= 0.1 || this.opacity >= 1) {
+    if (this.opacity <= 0.1 || this.opacity >= 0.8) {
       this.fadeDirection *= -1;
     }
 
@@ -33,19 +34,20 @@ class Particle {
   }
 
   draw(ctx) {
-    ctx.fillStyle = `rgba(0, 243, 255, ${this.opacity})`; // Neon Blue
+    ctx.fillStyle = `rgba(0, 255, 200, ${this.opacity})`; // Refined Teal
     ctx.beginPath();
     ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
     ctx.fill();
 
-    // Add glow
-    ctx.shadowBlur = 10;
-    ctx.shadowColor = "rgba(0, 243, 255, 0.8)";
+    // Subtle glow
+    ctx.shadowBlur = 15;
+    ctx.shadowColor = "rgba(0, 255, 200, 0.6)";
   }
 }
 
 const BackgroundGrid = () => {
   const canvasRef = useRef(null);
+  const shouldReduceMotion = useReducedMotion();
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -66,7 +68,8 @@ const BackgroundGrid = () => {
     // Init Particles
     const initParticles = () => {
       particles = [];
-      const particleCount = Math.min(window.innerWidth / 10, 100); // Responsive count
+      // Increased density for more visual impact
+      const particleCount = 40; 
       for (let i = 0; i < particleCount; i++) {
         particles.push(new Particle(canvas));
       }
@@ -77,32 +80,45 @@ const BackgroundGrid = () => {
     const animate = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       particles.forEach(p => {
-        p.update(canvas);
+        if (!shouldReduceMotion) {
+          p.update(canvas);
+        }
         p.draw(ctx);
       });
-      animationFrameId = window.requestAnimationFrame(animate);
+
+      if (!shouldReduceMotion) {
+        animationFrameId = window.requestAnimationFrame(animate);
+      } else {
+        // Draw one frame and stop
+        particles.forEach(p => p.draw(ctx));
+      }
     };
+    
+    // Initial draw
     animate();
 
     return () => {
       window.removeEventListener('resize', resizeCanvas);
-      window.cancelAnimationFrame(animationFrameId);
+      if (animationFrameId) {
+        window.cancelAnimationFrame(animationFrameId);
+      }
     };
-  }, []);
+  }, [shouldReduceMotion]);
 
   return (
     <div className="background-grid-container">
       {/* 1. Base: Flat Schematic Grid */}
       <div className="flat-grid"></div>
+      <div className="scanner-line"></div>
 
-      {/* 2. Middle: Aurora Blobs */}
+      {/* 2. Middle: Aurora Blobs (Lower opacity for focus) */}
       <div className="aurora-blob blob-1"></div>
       <div className="aurora-blob blob-2"></div>
 
       {/* 3. Top: Bio-Data Particles (Canvas) */}
       <canvas ref={canvasRef} className="particles-canvas" />
 
-      {/* 4. Overlay: Vignette */}
+      {/* 4. Overlay: Vignette (Enhanced for focus) */}
       <div className="grid-vignette"></div>
 
       <style>{`
@@ -120,41 +136,51 @@ const BackgroundGrid = () => {
 
         .flat-grid {
           position: absolute;
-          width: 200vw;
-          height: 200vh;
-          left: 0;
-          top: 0;
+          width: 100%;
+          height: 100%;
           background-image: 
-            linear-gradient(rgba(0, 243, 255, 0.03) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(0, 243, 255, 0.03) 1px, transparent 1px);
+          linear-gradient(rgba(0, 243, 255, 0.03) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(0, 243, 255, 0.03) 1px, transparent 1px);
           background-size: 60px 60px;
           opacity: 0.5;
+        }
+
+        .scanner-line {
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 2px;
+          background: linear-gradient(90deg, transparent, var(--neon-blue), transparent);
+          opacity: 0.1;
+          box-shadow: 0 0 15px var(--neon-blue);
+          animation: ${shouldReduceMotion ? 'none' : 'scan 8s linear infinite'};
+          z-index: 10;
         }
 
         .aurora-blob {
           position: absolute;
           border-radius: 50%;
-          filter: blur(80px);
-          opacity: 0.15;
-          animation: float 20s ease-in-out infinite;
+          filter: blur(140px);
+          opacity: 0.03; /* Lowered further per 40-60% requirement */
+          animation: ${shouldReduceMotion ? 'none' : 'float 30s ease-in-out infinite'};
         }
 
         .blob-1 {
-          top: 20%;
-          left: 10%;
-          width: 500px;
-          height: 500px;
+          top: 10%;
+          left: -10%;
+          width: 800px;
+          height: 800px;
           background: var(--neon-blue);
-          animation-delay: 0s;
         }
 
         .blob-2 {
-          bottom: 20%;
-          right: 10%;
-          width: 600px;
-          height: 600px;
+          bottom: -10%;
+          right: -10%;
+          width: 900px;
+          height: 900px;
           background: var(--neon-purple);
-          animation-delay: -10s;
+          animation-delay: -15s;
         }
 
         .particles-canvas {
@@ -163,7 +189,7 @@ const BackgroundGrid = () => {
           left: 0;
           width: 100%;
           height: 100%;
-          z-index: 1; /* Above blobs, below vignette */
+          z-index: 2; 
         }
 
         .grid-vignette {
@@ -172,13 +198,18 @@ const BackgroundGrid = () => {
           left: 0;
           width: 100%;
           height: 100%;
-          background: radial-gradient(circle, transparent 20%, var(--bg-dark) 100%);
-          z-index: 2;
+          background: radial-gradient(circle, transparent 20%, rgba(5, 5, 8, 0.8) 100%);
+          z-index: 3;
+        }
+
+        @keyframes scan {
+          0% { transform: translateY(-100vh); }
+          100% { transform: translateY(100vh); }
         }
 
         @keyframes float {
-          0%, 100% { transform: translate(0, 0); }
-          50% { transform: translate(30px, -30px); }
+          0%, 100% { transform: translate(0, 0) scale(1); }
+          50% { transform: translate(50px, -50px) scale(1.1); }
         }
       `}</style>
     </div>

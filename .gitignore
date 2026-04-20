@@ -48,6 +48,7 @@ build/
 # Logs and Reports
 lint_*.json
 lint_*.txt
+test_fail_report.txt
 .DS_Store
 tmp/
 
@@ -78,3 +79,23 @@ PROJECT_REPORT.md
 *.zip
 *.mp4
 *.csv
+
+# Audio recordings
+*.wav
+*.m4a
+*.webm
+*.ogg
+*.flac
+*.mp3
+**/audio_samples/
+
+# Machine Learning Models
+*.ckpt
+*.pt
+*.pth
+*.onnx
+*.npy
+*.npz
+*.h5
+**/pretrained_models/
+**/models/

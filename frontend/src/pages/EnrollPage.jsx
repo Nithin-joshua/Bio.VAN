@@ -8,6 +8,7 @@ import Select from '../components/core/Select';
 import Card from '../components/ui/Card';
 import SystemStatus from '../components/ui/SystemStatus';
 import AlertModal from '../components/ui/AlertModal';
+import StepIndicator from '../components/ui/StepIndicator';
 import { PHONETIC_PARAGRAPHS } from '../data/phonetics';
 import { registerUserVoiceprint, checkVoiceLiveness, fetchChallengePhrases } from '../api/enroll.api';
 import '../styles/components.css';
@@ -176,15 +177,19 @@ const EnrollPage = () => {
           console.error("Enrollment Error:", err);
           setIsSubmittingToServer(false);
 
-          // Check for Security Alert (Duplicate)
+          // Check for Security Alert (Duplicate Voice)
           const errorMessage = err.message || "Enrollment Failed";
-          const isDuplicate = errorMessage.includes("Biometric Security Alert") || (err.response && err.response.status === 409);
+          const isDuplicate = 
+            errorMessage.includes("already present") || 
+            errorMessage.includes("Duplicate voice") ||
+            errorMessage.includes("already enrolled") ||
+            errorMessage.includes("Biometric Security Alert");
 
           if (isDuplicate) {
             setAlertState({
               show: true,
-              title: "SECURITY ALERT",
-              message: "Duplicate Biometric Detected! Voice signature matches an existing registered identity.",
+              title: "VOICE SIGNATURE MATCH DETECTED",
+              message: errorMessage,
               type: "error"
             });
           } else {
@@ -212,51 +217,58 @@ const EnrollPage = () => {
       case 0:
         // Step 1: Collect user profile information
         return (
-          <Card title="IDENTITY PROTOCOL" status="PHASE 1/4" delay={0.1}>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem', width: '100%', maxWidth: '400px', padding: '1rem' }}>
+          <div className="text-overlay" style={{ marginTop: '2rem', maxWidth: '500px', width: '100%', marginLeft: 'auto', marginRight: 'auto' }}>
+            <h2 className="text-h2" style={{ fontSize: '1.5rem', marginBottom: '1rem' }}>
+              SET UP YOUR VOICE ID
+            </h2>
+            <p className="text-body" style={{ marginBottom: '2.5rem', fontSize: '0.95rem' }}>
+              Takes less than 10 seconds. Your voice will be turned into a secure digital key that only you can use.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
               <div className="cyber-input-group">
-                <label className="cyber-label">DESIGNATION (FULL NAME)</label>
+                <label className="cyber-label">YOUR FULL NAME</label>
                 <input
                   type="text"
                   className="cyber-input"
                   value={enrollmentData.fullName}
                   onChange={(e) => setEnrollmentData({ ...enrollmentData, fullName: e.target.value })}
-                  placeholder="ENTER DESIGNATION"
+                  placeholder="e.g. John Doe"
                 />
               </div>
               <div className="cyber-input-group">
-                <label className="cyber-label">COMMS CHANNEL (EMAIL)</label>
+                <label className="cyber-label">EMAIL ADDRESS</label>
                 <input
                   type="email"
                   className="cyber-input"
                   value={enrollmentData.email}
                   onChange={(e) => setEnrollmentData({ ...enrollmentData, email: e.target.value })}
-                  placeholder="user@network.com"
+                  placeholder="e.g. name@company.com"
                 />
               </div>
 
               <div className="cyber-input-group">
-                <label className="cyber-label">CLEARANCE LEVEL</label>
+                <label className="cyber-label">ACCESS LEVEL</label>
                 <Select
                   value={enrollmentData.role}
                   onChange={(value) => setEnrollmentData({ ...enrollmentData, role: value })}
                   options={[
-                    { value: 'personnel', label: 'STANDARD PERSONNEL' },
-                    { value: 'admin', label: 'SYSTEM ADMINISTRATOR' },
-                    { value: 'researcher', label: 'LAB RESEARCHER' }
+                    { value: 'personnel', label: 'STANDARD' },
+                    { value: 'admin', label: 'ADMINISTRATOR' },
+                    { value: 'researcher', label: 'RESEARCHER' }
                   ]}
-                  placeholder="SELECT CLEARANCE"
+                  placeholder="Select Level"
                 />
               </div>
               <Button
+                variant="primary"
                 onClick={proceedToNextStep}
                 disabled={!enrollmentData.fullName || !enrollmentData.email || !enrollmentData.email.includes('@')}
-                style={{ marginTop: '1rem' }}
+                style={{ marginTop: '1rem', width: '100%' }}
               >
-                INITIATE VOICE CALIBRATION
+                START SET UP
               </Button>
             </div>
-          </Card>
+          </div>
         );
       case 1:
       case 2:
@@ -269,131 +281,148 @@ const EnrollPage = () => {
           const hasRecording = !!enrollmentData.recordings[currentSampleId];
 
           return (
-            <Card className="cyber-player-card" style={{ padding: '1.5rem', borderRadius: '30px' }}>
-
-              {/* Header */}
-              <div className="player-header">
-                <div className="player-header-text">
-                  VOICE CALIBRATION // SAMPLE {currentStep}/3
-                </div>
-              </div>
-
-              {/* Visualizer */}
-              <div className="visualizer-display">
-                <div className="visualizer-content">
-                  <div style={{ width: '100%', height: '100%', opacity: 0.6 }}>
-                    <Waveform audioData={audioData} isActive={isRecording} />
-                  </div>
-                  <div style={{ position: 'absolute' }}>
-                    <PulseRing isActive={isRecording} />
+            <div style={{ width: '100%', maxWidth: '380px', marginTop: '1rem', marginLeft: 'auto', marginRight: 'auto' }}>
+              <Card className="cyber-player-card" style={{ padding: '2rem', borderRadius: '24px' }}>
+                {/* Header */}
+                <div className="player-header" style={{ marginBottom: '1.5rem' }}>
+                  <div className="player-header-text">
+                    RECORDING // STEP {currentStep} OF 3
                   </div>
                 </div>
-              </div>
 
-              {/* Track Info */}
-              <div className="player-track-info">
-                <div className="track-title-row">
-                  <div style={{ flex: 1 }}>
-                    <div className="track-title-label">
-                      Encoding Profile
+                {/* Visualizer */}
+                <div className="visualizer-display" style={{ height: '180px', marginBottom: '1.5rem' }}>
+                  <div className="visualizer-content">
+                    <div style={{ width: '100%', height: '100%', opacity: 0.8 }}>
+                      <Waveform audioData={audioData} isActive={isRecording} />
                     </div>
-                    <div style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', fontFamily: 'var(--font-mono)' }}>
-                      {enrollmentData.fullName || "UNKNOWN SUBJECT"}
+                    <div style={{ position: 'absolute' }}>
+                      <PulseRing isActive={isRecording} />
                     </div>
                   </div>
-                  <div style={{ paddingBottom: '2px' }}>
-                    <div className={`status-dot ${hasRecording ? 'active' : (isRecording ? 'recording' : '')}`} />
-                  </div>
                 </div>
 
-                <div className="player-lyrics">
-                  <div className="player-lyrics-text">
-                    &quot;{currentText}&quot;
-                  </div>
-                </div>
-              </div>
-
-              {/* Controls */}
-              <div className="player-controls-area">
-                <div className="player-progress-bar">
-                  <div className="player-progress-fill" style={{ width: isRecording ? '100%' : '0%', transitionDuration: '10s' }} />
-                </div>
-
-                <div className="player-buttons">
-                  {/* Previous Step */}
-                  <button onClick={returnToPreviousStep} className="player-btn-small" title="Back">
-                    <span style={{ transform: 'scaleX(-1)', display: 'inline-block' }}>&gt;</span>
-                  </button>
-
-                  {/* Record / Stop */}
-                  <div
-                    className={`player-btn-main ${isRecording ? 'recording' : ''}`}
-                    onClick={() => toggleRecording(currentSampleId)}
-                  >
-                    {isRecording ? <div className="icon-stop" /> : <div className="icon-play" />}
+                {/* Track Info */}
+                <div className="player-track-info" style={{ marginBottom: '1.5rem' }}>
+                  <div className="track-title-row">
+                    <div style={{ flex: 1 }}>
+                      <div className="track-title-label" style={{ color: 'var(--neon-blue)', fontSize: '0.8rem', opacity: 0.8 }}>
+                        {enrollmentData.email}
+                      </div>
+                      <div style={{ color: 'white', fontSize: '1.1rem', fontWeight: 'bold', fontFamily: 'var(--font-header)', marginTop: '0.2rem' }}>
+                        {enrollmentData.fullName || "IDENTIFYING..."}
+                      </div>
+                    </div>
                   </div>
 
-                  {/* Next Step */}
-                  <button
-                    onClick={proceedToNextStep}
-                    className="player-btn-small"
-                    disabled={!hasRecording || isSubmittingToServer}
-                    style={{ opacity: (!hasRecording || isSubmittingToServer) ? 0.5 : 1, cursor: (!hasRecording || isSubmittingToServer) ? 'not-allowed' : 'pointer' }}
-                    title="Next Sample"
-                  >
-                    <span>&gt;</span>
-                  </button>
-                </div>
-
-                <div style={{ textAlign: 'center', marginTop: '1rem', color: 'var(--text-secondary)', fontSize: '0.7rem', fontFamily: 'var(--font-mono)' }}>
-                  {isRecording ? "RECORDING IN PROGRESS..." : (hasRecording ? "SAMPLE BUFFERED. PROCEED >>" : "AWAITING INPUT")}
-                </div>
-
-                {/* Buffer Status Indicators */}
-                <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginTop: '10px' }}>
-                  {[1, 2, 3].map(step => {
-                    const sId = PHONETIC_PARAGRAPHS[step - 1].id;
-                    const isBuffered = !!enrollmentData.recordings[sId];
-                    return (
-                      <div
-                        key={sId}
-                        title={`Sample ${step} ${isBuffered ? 'Buffered' : 'Eqmpty'}`}
-                        style={{
-                          width: '8px', height: '8px',
-                          borderRadius: '50%',
-                          backgroundColor: isBuffered ? 'var(--primary-color)' : 'rgba(255,255,255,0.1)',
-                          boxShadow: isBuffered ? '0 0 5px var(--primary-color)' : 'none',
-                          transition: 'all 0.3s'
+                  <div className="player-lyrics" style={{ marginTop: '1rem' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                      <p style={{ color: 'var(--text-secondary)', fontSize: '0.7rem', margin: 0, fontWeight: 'bold' }}>SAY THIS ALOUD:</p>
+                      <button 
+                        onClick={() => {
+                          fetchChallengePhrases(3).then(setChallengePhrases);
+                          setEnrollmentData(prev => ({ ...prev, recordings: {} }));
+                          if (currentStep > 1) setCurrentStep(1);
+                          showToast("Security Protocol Rotated. Please restart samples.", "info");
                         }}
-                      />
-                    );
-                  })}
+                        className="no-btn"
+                        style={{ background: 'none', border: 'none', color: 'var(--neon-blue)', fontSize: '0.6rem', cursor: 'pointer', opacity: 0.6, letterSpacing: '1px' }}
+                      >
+                        REFRESH PROTOCOL
+                      </button>
+                    </div>
+                    <div className="player-lyrics-text" style={{ fontSize: '0.9rem', color: 'white', borderLeft: '2px solid var(--neon-blue)', paddingLeft: '1rem', minHeight: '3em', display: 'flex', alignItems: 'center' }}>
+                      &quot;{currentText}&quot;
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </Card>
+
+                {/* Controls */}
+                <div className="player-controls-area">
+                  <div className="player-progress-bar">
+                    <div className="player-progress-fill" style={{ width: isRecording ? '100%' : '0%', transitionDuration: '10s' }} />
+                  </div>
+
+                  <div className="player-buttons" style={{ gap: '2rem' }}>
+                    {/* Previous Step */}
+                    <button onClick={returnToPreviousStep} className="player-btn-small" title="Back">
+                      <span style={{ transform: 'scaleX(-1)', display: 'inline-block' }}>&gt;</span>
+                    </button>
+
+                    {/* Record / Stop */}
+                    <div style={{ position: 'relative' }}>
+                      <VoiceActivityRing
+                        audioLevel={audioData && audioData.length > 0 ? (audioData.reduce((a, b) => a + b, 0) / audioData.length) : 0}
+                        isActive={isRecording}
+                        status={isSubmittingToServer ? 'processing' : (isRecording ? 'recording' : (hasRecording ? 'success' : 'idle'))}
+                        size={60}
+                      />
+                      <div
+                        className={`player-btn-main ${isRecording ? 'recording' : ''}`}
+                        onClick={() => toggleRecording(currentSampleId)}
+                      >
+                        {isRecording ? <div className="icon-stop" /> : <div className="icon-play" />}
+                      </div>
+                    </div>
+
+                    {/* Next Step */}
+                    <button
+                      onClick={proceedToNextStep}
+                      className="player-btn-small"
+                      disabled={!hasRecording || isSubmittingToServer}
+                      style={{ opacity: (!hasRecording || isSubmittingToServer) ? 0.3 : 1 }}
+                      title="Proceed"
+                    >
+                      <span>&gt;</span>
+                    </button>
+                  </div>
+
+                  <div style={{ textAlign: 'center', marginTop: '1.5rem', color: 'var(--text-secondary)', fontSize: '0.7rem', fontFamily: 'var(--font-mono)' }}>
+                    {isRecording ? "LISTENING..." : (hasRecording ? "VOICE SAVED" : "AWAITING ACTION")}
+                  </div>
+
+                  {/* Step Indicators */}
+                  <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginTop: '15px' }}>
+                    {[1, 2, 3].map(step => {
+                      const sId = PHONETIC_PARAGRAPHS[step - 1].id;
+                      const isBuffered = !!enrollmentData.recordings[sId];
+                      return (
+                        <div
+                          key={sId}
+                          style={{
+                            width: '40px', height: '3px',
+                            background: isBuffered ? 'var(--neon-blue)' : 'rgba(255,255,255,0.1)',
+                            boxShadow: isBuffered ? '0 0 10px var(--neon-blue)' : 'none',
+                            transition: 'all 0.3s'
+                          }}
+                        />
+                      );
+                    })}
+                  </div>
+                </div>
+              </Card>
+            </div>
           );
         }
       case 4:
         // Step 5: Success confirmation
         return (
-          <Card title="REGISTRATION COMPLETE" status="SUCCESS" delay={0.1}>
-            <div style={{ padding: '2rem', textAlign: 'center', maxWidth: '400px' }}>
-              <div style={{ fontSize: '3rem', marginBottom: '1rem' }}>*</div>
-              <h3 style={{ color: 'var(--primary-color)', marginBottom: '1rem' }}>IDENTITY ENCODED</h3>
-              {generatedUserId && (
-                <div style={{ margin: '1rem 0', padding: '1rem', border: '1px dashed var(--primary-color)', background: 'rgba(0, 243, 255, 0.05)' }}>
-                  <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginBottom: '0.5rem' }}>ASSIGNED OPERATOR ID</p>
-                  <p style={{ color: 'white', fontSize: '2rem', fontFamily: 'var(--font-mono)', letterSpacing: '2px' }}>{generatedUserId}</p>
-                </div>
-              )}
-              <p style={{ color: 'var(--text-secondary)', marginBottom: '2rem' }}>
-                Voice profile has been successfully integrated for <strong style={{ color: 'white' }}>{enrollmentData.fullName}</strong>.
-              </p>
-              <Link to="/">
-                <Button>RETURN TO MAIN GATEWAY</Button>
-              </Link>
-            </div>
-          </Card>
+          <div className="text-overlay" style={{ textAlign: 'center', maxWidth: '450px', width: '100%', marginLeft: 'auto', marginRight: 'auto' }}>
+            <div style={{ color: 'var(--neon-green)', fontSize: '4rem', marginBottom: '1rem' }}>✓</div>
+            <h3 style={{ color: 'var(--neon-green)', marginBottom: '1.5rem', fontFamily: 'var(--font-header)' }}>VOICE ID READY</h3>
+            {generatedUserId && (
+              <div style={{ margin: '1.5rem 0', padding: '1.5rem', border: '1px solid var(--neon-blue)', background: 'var(--neon-blue-dim)' }}>
+                <p style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginBottom: '0.5rem', letterSpacing: '2px' }}>YOUR USER ID</p>
+                <p style={{ color: 'white', fontSize: '2.2rem', fontFamily: 'var(--font-mono)', letterSpacing: '4px', fontWeight: 'bold' }}>{generatedUserId}</p>
+              </div>
+            )}
+            <p style={{ marginBottom: '2rem', color: 'var(--text-secondary)' }}>
+              Success! <strong style={{ color: 'white' }}>{enrollmentData.fullName}</strong>, your voice profile is now active and secure.
+            </p>
+            <Link to="/">
+              <Button variant="secondary" className="lg" style={{ width: '100%' }}>BACK TO HOME</Button>
+            </Link>
+          </div>
         );
       default:
         return null;
@@ -402,7 +431,14 @@ const EnrollPage = () => {
 
   return (
     <ErrorBoundary>
-      <div className="page-container" style={{ justifyContent: 'center', alignItems: 'center' }}>
+      <div className="page-container" style={{ 
+        minHeight: '100vh', 
+        display: 'flex', 
+        flexDirection: 'column', 
+        alignItems: 'center',
+        padding: '2rem 0',
+        position: 'relative' // Ensure relative positioning for footer anchoring
+      }}>
         {alertState.show && (
           <AlertModal
             title={alertState.title}
@@ -412,32 +448,41 @@ const EnrollPage = () => {
           />
         )}
         <SystemStatus />
-        {/* Page header with logo and title */}
-        {currentStep === 0 && (
+        
+        {/* Step Progression Header */}
+        <div className="section-container" style={{ 
+          flex: 1, 
+          display: 'flex', 
+          flexDirection: 'column', 
+          alignItems: 'center', 
+          justifyContent: 'center', 
+          width: '100%',
+          padding: '1rem',
+          marginBottom: '2rem' // Add space before build info
+        }}>
+          <div style={{ width: '100%', maxWidth: '800px', marginBottom: '1.5rem' }}>
+            <StepIndicator currentStep={currentStep === 4 ? 3 : (currentStep === 0 ? 1 : 2)} />
+          </div>
           <motion.div
-            style={{ marginBottom: '2rem', textAlign: 'center' }}
-            initial={{ opacity: 0, y: 30 }}
+            initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6, delay: 0.3 }}
+            style={{ width: '100%', maxWidth: '580px' }}
           >
-            <Logo size="medium" style={{ justifyContent: 'center' }} />
-            <motion.h2
-              style={{ fontFamily: 'var(--font-header)', color: 'var(--text-secondary)', letterSpacing: '4px', fontSize: '1rem', marginTop: '1rem' }}
-              initial={{ opacity: 0, letterSpacing: '0px' }}
-              animate={{ opacity: 1, letterSpacing: '4px' }}
-              transition={{ duration: 0.8, delay: 0.6 }}
-            >
-              NEW USER ENROLLMENT PROTOCOL
-            </motion.h2>
+            <div className="unified-system-card" style={{ position: 'relative' }}>
+              <div className="status-pill" style={{ position: 'absolute', top: '1rem', right: '1rem', zIndex: 10 }}>
+                <span className="status-indicator active"></span>
+                ENROLLMENT_PROTOCOL
+              </div>
+              <div className="system-section" style={{ padding: '2.5rem' }}>
+                {renderProtocolInterface()}
+              </div>
+            </div>
           </motion.div>
-        )}
+        </div>
 
-        {/* Render current step content */}
-        {renderProtocolInterface()}
-
-        {/* Footer with version info */}
-        <div style={{ marginTop: '2rem', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.8rem' }}>
-          SECURE_CORE // V2.0.4
+        {/* Build info remains at the bottom of the page container */}
+        <div style={{ paddingBottom: '1rem', color: 'var(--text-muted)', fontSize: '0.7rem', fontFamily: 'var(--font-mono)', letterSpacing: '2px', opacity: 0.5 }}>
+          SECURE_GATEWAY // B.V_PROT_V2.5
         </div>
       </div>
     </ErrorBoundary>

@@ -59,18 +59,32 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  /* Fix: Stack Page and Footer verticaly */
   justify-content: flex-start;
-  /* Start from top so scrolling works naturally */
   align-items: center;
-  /* Center horizontally */
   position: relative;
-  height: 100vh;
-  /* Force full height */
+  width: 100%;
+  min-height: auto;
   overflow-y: auto;
-  /* Fix: Allow scrolling */
   overflow-x: hidden;
-  /* Removed solid background to show BackgroundGrid */
+  /* Scroll behavior for smooth navigation */
+  scroll-behavior: smooth;
+}
+
+/* Fix for persistent scrollbars */
+html, body {
+  overflow: hidden !important;
+  height: 100% !important;
+  width: 100% !important;
+  margin: 0;
+  padding: 0;
+}
+
+#root {
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 }
 
 @keyframes grid-move {
@@ -81,6 +95,13 @@
   100% {
     background-position: 0 50px;
   }
+}
+
+.home-page {
+  height: 100vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  width: 100%;
 }
 
 .page-container {
