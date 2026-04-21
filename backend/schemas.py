@@ -13,6 +13,7 @@ class UserCreate(UserBase):
 class UserResponse(UserBase):
     id: str
     voice_profile_status: str
+    biometric_synced: bool
     created_at: datetime
 
     class Config:

@@ -1,6 +1,7 @@
 # database/milvus_client.py
 
 import time
+from typing import List
 from pymilvus import (
     connections,
     Collection,
@@ -190,4 +191,31 @@ def delete_embedding(voice_uuid: str):
     except Exception as e:
         print(f"ERROR: Failed to delete embedding for voice_uuid {voice_uuid}: {e}")
         raise e
+
+def check_embeddings_exist(voice_uuids: List[str]) -> List[str]:
+    """
+    Check which voice_uuids actually exist in the Milvus collection.
+    
+    Returns:
+        List of voice_uuids that were found.
+    """
+    if not voice_uuids:
+        return []
+        
+    collection = init_milvus()
+    try:
+        # Use query to find existing IDs in the list
+        # Using string set notation for membership check in Milvus
+        uuids_str = ", ".join([f"'{u}'" for u in voice_uuids])
+        expr = f"speaker_id in [{uuids_str}]"
+        
+        results = collection.query(
+            expr=expr,
+            output_fields=["speaker_id"],
+            consistency_level="Strong"
+        )
+        return [r["speaker_id"] for r in results]
+    except Exception as e:
+        logger.error(f"Failed to batch check embeddings: {e}")
+        return []
 

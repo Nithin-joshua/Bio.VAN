@@ -53,6 +53,7 @@ MIN_AUDIO_DURATION = 3.0
 EMBEDDING_DIM = 192
 
 # Voice Verification Thresholds
-VOICE_MATCH_THRESHOLD = float(os.getenv("VOICE_MATCH_THRESHOLD", "0.75"))  # Cosine similarity threshold (0.0 to 1.0)
+VOICE_MATCH_THRESHOLD = float(os.getenv("VOICE_MATCH_THRESHOLD", "0.70"))  # Aligned with deduplication for reliability
+DEDUPLICATION_THRESHOLD = float(os.getenv("DEDUPLICATION_THRESHOLD", "0.70"))  # More sensitive threshold for account deduplication
 CHALLENGE_MATCH_THRESHOLD = int(os.getenv("CHALLENGE_MATCH_THRESHOLD", "50"))  # Phrase matching threshold (0 to 100%)
 RE_ENROLLMENT_PERIOD_DAYS = 180  # 6 Months Voice Expiry Policy

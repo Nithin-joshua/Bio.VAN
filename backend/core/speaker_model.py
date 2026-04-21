@@ -41,18 +41,21 @@ class ECAPAModel:
             emb = self.model.encode_batch(wav)
 
         # 3. Force 1-D vector
-        # Flatten to simple 1D array of features
         emb = emb.squeeze()          # removes batch dims
         emb = emb.cpu().numpy()      # numpy array (D,)
         
-        # L2 Normalization
-        norm = np.linalg.norm(emb)
-        if norm > 0:
-            emb = emb / norm
+        # 4. L2 Normalization
+        emb = self.normalize_embedding(emb)
 
-        # 4. Convert to pure Python list of floats
-        # JSON serialization requires native Python types
+        # 5. Convert to pure Python list of floats
         return emb.astype(float).tolist()
+        
+    def normalize_embedding(self, emb_np: np.ndarray) -> np.ndarray:
+        """L2 Normalization for vector similarity matching."""
+        norm = np.linalg.norm(emb_np)
+        if norm > 1e-6:
+            return emb_np / norm
+        return emb_np
 
 # Singleton instance
 ecapa_model = ECAPAModel()

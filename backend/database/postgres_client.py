@@ -1,7 +1,7 @@
 # database/postgres_client.py
 
 import uuid
-from sqlalchemy import create_engine, Column, Integer, Float, String, DateTime, event
+from sqlalchemy import create_engine, Column, Integer, Float, String, DateTime, Boolean, event
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from datetime import datetime
@@ -44,6 +44,7 @@ class User(Base):
     # Security Architecture Updates
     voice_uuid = Column(String, unique=True, nullable=True) # Anonymized ID for Vector DB
     enrolled_at = Column(DateTime, default=datetime.utcnow) # For Voice Expiry Policy
+    biometric_synced = Column(Boolean, default=False) # Biometric database health link
 
 class AuthLog(Base):
     __tablename__ = "auth_logs"
@@ -102,12 +103,14 @@ def create_user(full_name: str, email: str, role: str, user_id: str, hashed_pass
     finally:
         session.close()
 
-def update_user_status(user_id: str, status: str):
+def update_user_status(user_id: str, status: str, biometric_synced: bool = None):
     session = SessionLocal()
     try:
         user = session.query(User).filter(User.id == user_id).first()
         if user:
             user.voice_profile_status = status
+            if biometric_synced is not None:
+                user.biometric_synced = biometric_synced
             session.commit()
             return True
         return False

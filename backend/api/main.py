@@ -28,10 +28,11 @@ from core.challenge import verify_challenge
 from database.milvus_client import (
     init_milvus,
     search_embedding,
-    insert_embedding
+    insert_embedding,
+    check_embeddings_exist
 )
 from database.postgres_client import init_db, log_auth, create_user, get_user_by_voice_uuid, get_user_by_id, get_user_by_email, get_all_users, update_user_status, delete_user
-from config.settings import RE_ENROLLMENT_PERIOD_DAYS, BIO_VAN_API_KEY, VOICE_MATCH_THRESHOLD, CHALLENGE_MATCH_THRESHOLD
+from config.settings import RE_ENROLLMENT_PERIOD_DAYS, BIO_VAN_API_KEY, VOICE_MATCH_THRESHOLD, CHALLENGE_MATCH_THRESHOLD, DEDUPLICATION_THRESHOLD
 from api.auth import router as auth_router, get_current_active_user, get_current_admin_user
 from core.security import get_password_hash
 from schemas import UserResponse
@@ -276,17 +277,21 @@ async def enroll(
         mean_embedding = np.mean(embeddings, axis=0).tolist()
 
         # VOICE VERIFICATION: Check if this voice already exists in Milvus
-        logger.info(f"Verifying voice against existing embeddings")
+        # We re-normalize the mean embedding to ensure accurate cosine similarity
+        mean_embedding_np = model.normalize_embedding(np.mean(embeddings, axis=0))
+        mean_embedding = mean_embedding_np.tolist()
+
+        logger.info(f"Verifying voice identity against existing database (Threshold: {DEDUPLICATION_THRESHOLD})")
         results = await run_cpu_bound(search_embedding, mean_embedding, 1, None)
         
-        if results and results[0].distance > VOICE_MATCH_THRESHOLD:
+        if results and results[0].distance > DEDUPLICATION_THRESHOLD:
             matched_uuid = results[0].id
             existing_speaker = await run_cpu_bound(get_user_by_voice_uuid, matched_uuid)
             if existing_speaker:
-                logger.warning(f"Voice match detected during enrollment. Matches existing speaker: {existing_speaker.id}")
+                logger.warning(f"SECURITY ALERT: Voice match detected (Score: {results[0].distance:.4f}). Identity already registered to user: {existing_speaker.id}")
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Voice already present in the system. Similarity score: {results[0].distance:.4f}"
+                    detail=f"Biometric Security Alert: This voice signature is already registered in the system."
                 )
 
         # ---------------------------------------------------------
@@ -303,8 +308,8 @@ async def enroll(
             # 2. Insert into Milvus
             await run_cpu_bound(insert_embedding, voice_uuid, mean_embedding)
             
-            # 3. Mark as ACTIVE
-            await run_cpu_bound(update_user_status, speaker_id, "active")
+            # 3. Mark as ACTIVE and SYNCED
+            await run_cpu_bound(update_user_status, speaker_id, "active", True)
             await run_cpu_bound(log_auth, speaker_id, 1.0, "ENROLLED")
             
             logger.info(f"Enrollment successful for {speaker_id}")
@@ -317,9 +322,15 @@ async def enroll(
             raise HTTPException(status_code=500, detail="Persistence error; enrollment rolled back.")
 
     except HTTPException: raise
+    except (ConnectionError, RuntimeError) as e:
+        logger.error(f"Biometric Security Service Unavailable: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Biometric security service is warming up. Please try again in 1 minute."
+        )
     except Exception as e:
-        logger.exception("Enrollment failed")
-        raise HTTPException(status_code=500, detail=str(e))
+        logger.exception("Enrollment unexpected failure")
+        raise HTTPException(status_code=500, detail=f"System error: {str(e)}")
 
 
 @app.post("/verify")
@@ -377,17 +388,41 @@ async def verify(
         logger.warning(f"Voice verification failed - threshold not met")
         return {"verified": False, "message": "Voice mismatch detected"}
 
+    except HTTPException: raise
+    except (ConnectionError, RuntimeError) as e:
+        logger.error(f"Biometric Security Service Unavailable during verification: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Biometric security service is warming up. Please try again in 1 minute."
+        )
     except Exception as e:
         logger.exception("Verification failed")
-        raise HTTPException(status_code=500, detail="Internal processing error")
+        raise HTTPException(status_code=500, detail=f"System error: {str(e)}")
     finally:
-        if os.path.exists(tmp_path): os.remove(tmp_path)
+        if os.path.exists(tmp_path):
+            os.remove(tmp_path)
 
 
 # Admin routes
 @app.get("/users", response_model=List[UserResponse])
 async def list_users(current_user: UserResponse = Depends(get_current_admin_user)):
-    return await run_cpu_bound(get_all_users)
+    users = await run_cpu_bound(get_all_users)
+    
+    # Live Biometric Health Check
+    uuids_in_pg = [u.voice_uuid for u in users if u.voice_uuid]
+    if uuids_in_pg:
+        # Check which ones actually exist in Milvus
+        found_uuids = await run_cpu_bound(check_embeddings_exist, uuids_in_pg)
+        found_set = set(found_uuids)
+        
+        # update the biometric_synced flag in the objects before returning
+        for u in users:
+            if u.voice_uuid:
+                u.biometric_synced = u.voice_uuid in found_set
+            else:
+                u.biometric_synced = False
+                
+    return users
 
 @app.delete("/users/{user_id}")
 async def delete_user_endpoint(user_id: str, current_user: UserResponse = Depends(get_current_admin_user)):

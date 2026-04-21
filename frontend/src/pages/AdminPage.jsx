@@ -110,6 +110,7 @@ const AdminPage = () => {
                                             <th style={{ padding: '1rem', color: 'var(--primary-color)' }}>FULL NAME</th>
                                             <th style={{ padding: '1rem', color: 'var(--primary-color)' }}>EMAIL</th>
                                             <th style={{ padding: '1rem', color: 'var(--primary-color)' }}>ROLE</th>
+                                            <th style={{ padding: '1rem', color: 'var(--primary-color)' }}>BIO HEALTH</th>
                                             <th style={{ padding: '1rem', color: 'var(--primary-color)' }}>STATUS</th>
                                             <th style={{ padding: '1rem', color: 'var(--primary-color)', textAlign: 'center' }}>ACTIONS</th>
                                         </tr>
@@ -130,7 +131,24 @@ const AdminPage = () => {
                                                         {user.role || 'PERSONNEL'}
                                                     </span>
                                                 </td>
-                                                <td style={{ padding: '1rem', color: 'var(--neon-green)' }}>ACTIVE</td>
+                                                <td style={{ padding: '1rem' }}>
+                                                    <span style={{
+                                                        padding: '0.2rem 0.5rem',
+                                                        border: `1px solid ${user.biometric_synced ? 'var(--neon-green)' : 'red'}`,
+                                                        color: user.biometric_synced ? 'var(--neon-green)' : 'red',
+                                                        borderRadius: '4px',
+                                                        fontSize: '0.7rem'
+                                                    }}>
+                                                        {user.biometric_synced ? 'SYNCED' : 'MISSING'}
+                                                    </span>
+                                                </td>
+                                                <td style={{ 
+                                                    padding: '1rem', 
+                                                    color: user.voice_profile_status === 'active' ? 'var(--neon-green)' : 'var(--neon-purple)',
+                                                    fontWeight: 'bold'
+                                                }}>
+                                                    {(user.voice_profile_status || 'PENDING').toUpperCase()}
+                                                </td>
                                                 <td style={{ padding: '1rem', textAlign: 'center' }}>
                                                     <Button
                                                         variant="danger"

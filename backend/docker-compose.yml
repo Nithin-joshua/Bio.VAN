@@ -8,9 +8,11 @@ services:
       - ETCD_QUOTA_BACKEND_BYTES=4294967296
     command: >
       etcd
-      -advertise-client-urls=http://0.0.0.0:2379
-      -listen-client-urls=http://0.0.0.0:2379
+      --advertise-client-urls=http://0.0.0.0:2379
+      --listen-client-urls=http://0.0.0.0:2379
       --data-dir=/etcd
+    volumes:
+      - etcd_data:/etcd
     ports:
       - "2379:2379"
 
@@ -20,6 +22,8 @@ services:
     environment:
       MINIO_ACCESS_KEY: minioadmin
       MINIO_SECRET_KEY: minioadmin
+    volumes:
+      - minio_data:/minio_data
     command: minio server /minio_data --console-address ":9001"
     ports:
       - "9000:9000"
@@ -34,6 +38,8 @@ services:
     environment:
       ETCD_ENDPOINTS: etcd:2379
       MINIO_ADDRESS: minio:9000
+    volumes:
+      - milvus_data:/var/lib/milvus
     command: ["milvus", "run", "standalone"]
     ports:
       - "19530:19530"
@@ -62,4 +68,7 @@ services:
       - postgres_data:/var/lib/postgresql/data
 
 volumes:
+  etcd_data:
+  minio_data:
+  milvus_data:
   postgres_data:
