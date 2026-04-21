@@ -284,15 +284,25 @@ async def enroll(
         logger.info(f"Verifying voice identity against existing database (Threshold: {DEDUPLICATION_THRESHOLD})")
         results = await run_cpu_bound(search_embedding, mean_embedding, 1, None)
         
-        if results and results[0].distance > DEDUPLICATION_THRESHOLD:
-            matched_uuid = results[0].id
-            existing_speaker = await run_cpu_bound(get_user_by_voice_uuid, matched_uuid)
-            if existing_speaker:
-                logger.warning(f"SECURITY ALERT: Voice match detected (Score: {results[0].distance:.4f}). Identity already registered to user: {existing_speaker.id}")
+        if results:
+            match_score = results[0].distance
+            if match_score > DEDUPLICATION_THRESHOLD:
+                matched_uuid = results[0].id
+                existing_speaker = await run_cpu_bound(get_user_by_voice_uuid, matched_uuid)
+                
+                error_msg = "Biometric Security Alert: This voice signature is already registered in the system."
+                if existing_speaker:
+                    logger.warning(f"SECURITY ALERT: Biometric Duplicate Detected (Score: {match_score:.4f} > Threshold: {DEDUPLICATION_THRESHOLD}). Existing User: {existing_speaker.id}")
+                else:
+                    logger.critical(f"SECURITY ALERT: Phantom Biometric Detected (Score: {match_score:.4f} > Threshold: {DEDUPLICATION_THRESHOLD}). Voice signature exists in vector DB but has no Postgres owner. BLOCKING ENROLLMENT.")
+                    error_msg = "Biometric Integrity Alert: This voice signature exists in the master record but is unlinked. Please contact administrator."
+                
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
-                    detail=f"Biometric Security Alert: This voice signature is already registered in the system."
+                    detail=error_msg
                 )
+            elif match_score > (DEDUPLICATION_THRESHOLD - 0.1):
+                logger.info(f"Borderline biometric match detected (Score: {match_score:.4f}). Below deduplication threshold ({DEDUPLICATION_THRESHOLD}), but worth monitoring.")
 
         # ---------------------------------------------------------
         # IDENTITY INITIALIZATION (Dual Write)
@@ -427,14 +437,31 @@ async def list_users(current_user: UserResponse = Depends(get_current_admin_user
 @app.delete("/users/{user_id}")
 async def delete_user_endpoint(user_id: str, current_user: UserResponse = Depends(get_current_admin_user)):
     try:
+        logger.info(f"ADMIN: Attempting to delete user {user_id}")
         voice_uuid = await run_cpu_bound(delete_user, user_id)
+        
         if voice_uuid:
             from database.milvus_client import delete_embedding
+            logger.info(f"ADMIN: User {user_id} had voice profile {voice_uuid}. Purging from Milvus...")
             await run_cpu_bound(delete_embedding, voice_uuid)
-        return {"status": "success"}
+        else:
+            logger.info(f"ADMIN: User {user_id} was not enrolled or had no voice profile. Partial purge skipped.")
+            
+        return {"status": "success", "message": "User and linked biometrics purged."}
     except Exception as e:
-        logger.error(f"Deletion failed: {e}")
-        raise HTTPException(status_code=500, detail="Deletion failed")
+        logger.error(f"ADMIN ERROR: Deletion failed for {user_id}: {e}")
+        raise HTTPException(status_code=500, detail=f"Deletion failed: {str(e)}")
+
+@app.post("/admin/purge-orphans")
+async def purge_orphans_endpoint(current_user: UserResponse = Depends(get_current_admin_user)):
+    """Global maintenance: delete biometrics that have no owner in Postgres"""
+    try:
+        from database.sync_utils import purge_orphaned_biometrics
+        results = await run_cpu_bound(purge_orphaned_biometrics)
+        return results
+    except Exception as e:
+        logger.exception("Maintenance Alert: Global purge failed")
+        raise HTTPException(status_code=500, detail="Purge procedure failed")
 
 @app.get("/challenge")
 async def get_challenge(count: int = 1):

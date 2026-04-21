@@ -10,19 +10,34 @@ import { useEffect, useRef, useState } from 'react';
  */
 export const useWaveformAnalyzer = (stream) => {
   const [audioData, setAudioData] = useState(new Uint8Array(0));
+  const FRAME_INTERVAL_MS = 1000 / 30;
 
   // Refs to persist Web Audio API objects without causing re-renders
   const audioContextRef = useRef(null);
   const analyserRef = useRef(null);
   const sourceRef = useRef(null);
   const animationFrameId = useRef(null);
+  const lastFrameTimeRef = useRef(0);
 
   useEffect(() => {
     if (!stream) {
-      // Clean up animation loop if stream is stopped or removed
       if (animationFrameId.current) {
         cancelAnimationFrame(animationFrameId.current);
       }
+
+      if (sourceRef.current) {
+        sourceRef.current.disconnect();
+      }
+
+      if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
+        audioContextRef.current.close();
+      }
+
+      sourceRef.current = null;
+      analyserRef.current = null;
+      audioContextRef.current = null;
+      lastFrameTimeRef.current = 0;
+      setAudioData(new Uint8Array(0));
       return;
     }
 
@@ -33,7 +48,7 @@ export const useWaveformAnalyzer = (stream) => {
     // FFT size determines frequency resolution and time domain buffer size
     // 2048 gives us smooth waveforms without too much CPU overhead
     // Higher = more detail but more expensive, Lower = choppier waveform
-    analyserRef.current.fftSize = 2048;
+    analyserRef.current.fftSize = 1024;
 
     // Connect the microphone stream to the analyzer
     sourceRef.current = audioContextRef.current.createMediaStreamSource(stream);
@@ -47,7 +62,7 @@ export const useWaveformAnalyzer = (stream) => {
      * Continuously captures audio frames and updates state.
      * Runs at ~60fps via requestAnimationFrame for smooth visualization.
      */
-    const captureAudioFrame = () => {
+    const captureAudioFrame = (timestamp = 0) => {
       if (!analyserRef.current) return;
 
       // Get time domain data (amplitude over time) instead of frequency data
@@ -55,25 +70,35 @@ export const useWaveformAnalyzer = (stream) => {
       // dataArray values range from 0 to 255 (128 is silence)
       analyserRef.current.getByteTimeDomainData(dataArray);
 
-      // Create a new Uint8Array to trigger React re-render
-      // (React won't detect mutations to the same array reference, so a copy is needed)
-      setAudioData(new Uint8Array(dataArray));
+      if (timestamp - lastFrameTimeRef.current >= FRAME_INTERVAL_MS) {
+        lastFrameTimeRef.current = timestamp;
+        setAudioData(new Uint8Array(dataArray));
+      }
 
       // Schedule next frame
       animationFrameId.current = requestAnimationFrame(captureAudioFrame);
     };
 
-    // Start the animation loop
-    captureAudioFrame();
+    animationFrameId.current = requestAnimationFrame(captureAudioFrame);
 
     // Cleanup function runs when stream changes or component unmounts
     return () => {
       if (animationFrameId.current) {
         cancelAnimationFrame(animationFrameId.current);
       }
-      if (audioContextRef.current) {
+
+      if (sourceRef.current) {
+        sourceRef.current.disconnect();
+      }
+
+      if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
         audioContextRef.current.close();
       }
+
+      sourceRef.current = null;
+      analyserRef.current = null;
+      audioContextRef.current = null;
+      lastFrameTimeRef.current = 0;
     };
   }, [stream]);
 

@@ -203,19 +203,51 @@ def check_embeddings_exist(voice_uuids: List[str]) -> List[str]:
         return []
         
     collection = init_milvus()
-    try:
-        # Use query to find existing IDs in the list
-        # Using string set notation for membership check in Milvus
-        uuids_str = ", ".join([f"'{u}'" for u in voice_uuids])
-        expr = f"speaker_id in [{uuids_str}]"
-        
-        results = collection.query(
-            expr=expr,
-            output_fields=["speaker_id"],
-            consistency_level="Strong"
-        )
-        return [r["speaker_id"] for r in results]
-    except Exception as e:
-        logger.error(f"Failed to batch check embeddings: {e}")
-        return []
+    # Retry logic for transient leader unavailability
+    for attempt in range(3):
+        try:
+            # Use query to find existing IDs in the list
+            uuids_str = ", ".join([f"'{u}'" for u in voice_uuids])
+            expr = f"speaker_id in [{uuids_str}]"
+            
+            results = collection.query(
+                expr=expr,
+                output_fields=["speaker_id"],
+                consistency_level="Strong"
+            )
+            return [r["speaker_id"] for r in results]
+        except Exception as e:
+            if "leader not available" in str(e) and attempt < 2:
+                print(f"WARN: Milvus leader unavailable during query (attempt {attempt+1}), retrying...")
+                time.sleep(1)
+            else:
+                print(f"ERROR: Failed to batch check embeddings: {e}")
+                raise e
+    return []
+
+def get_all_embedding_ids() -> List[str]:
+    """
+    Fetch every speaker_id currently stored in Milvus. 
+    Used for synchronization cleanup.
+    """
+    collection = init_milvus()
+    # Retry logic for transient leader unavailability
+    for attempt in range(3):
+        try:
+            # Query with no expression to get all results
+            results = collection.query(
+                expr="speaker_id != ''", 
+                output_fields=["speaker_id"],
+                consistency_level="Strong"
+            )
+            return [r["speaker_id"] for r in results]
+        except Exception as e:
+            if "leader not available" in str(e) and attempt < 2:
+                print(f"WARN: Milvus leader unavailable during global fetch (attempt {attempt+1}), retrying...")
+                time.sleep(1)
+            else:
+                print(f"ERROR: Failed to fetch all embedding IDs: {e}")
+                raise e
+    return []
+
 

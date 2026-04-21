@@ -78,7 +78,7 @@ const AdminPage = () => {
             <SystemStatus />
 
             {/* Dashboard Header */}
-            <div style={{ marginBottom: '2rem', textAlign: 'center', position: 'relative', width: '100%', maxWidth: '800px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <div style={{ marginBottom: '2rem', textAlign: 'center', position: 'relative', width: '100%', maxWidth: '1200px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                 <Logo size="medium" style={{ justifyContent: 'center' }} />
                 <h2 style={{ fontFamily: 'var(--font-header)', color: 'var(--text-secondary)', letterSpacing: '4px', fontSize: '1rem', marginTop: '1rem' }}>
                     ADMINISTRATIVE DASHBOARD

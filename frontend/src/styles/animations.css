@@ -393,24 +393,29 @@
 @keyframes word-slide-in {
   0% {
     opacity: 0;
-    transform: translateY(20px) rotateZ(-10deg);
+    transform: translateY(30px) scale(0.95);
+    filter: blur(5px);
   }
   100% {
     opacity: 1;
-    transform: translateY(0) rotateZ(0deg);
+    transform: translateY(0) scale(1);
+    filter: blur(0);
   }
 }
 
 /* Word hover glow effect */
 @keyframes word-hover-glow {
   0% {
-    text-shadow: 0 0 10px rgba(0, 255, 255, 0.4);
+    text-shadow: 0 0 10px rgba(0, 255, 200, 0.2);
+    transform: translateY(0);
   }
   50% {
-    text-shadow: 0 0 25px rgba(0, 255, 255, 0.8);
+    text-shadow: 0 0 30px rgba(0, 255, 200, 0.6), 0 0 60px rgba(0, 255, 200, 0.2);
+    transform: translateY(-5px);
   }
   100% {
-    text-shadow: 0 0 10px rgba(0, 255, 255, 0.4);
+    text-shadow: 0 0 10px rgba(0, 255, 200, 0.2);
+    transform: translateY(0);
   }
 }
 
@@ -518,4 +523,31 @@
 .footer-status-dot.active-green {
   background: var(--neon-green);
   box-shadow: 0 0 10px var(--neon-green);
+}
+
+/* PREMIUM REVEALS */
+.reveal-stagger {
+  opacity: 0;
+  animation: reveal-premium 0.8s var(--ease-premium) forwards;
+}
+
+@keyframes reveal-premium {
+  from {
+    opacity: 0;
+    transform: translateY(40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.hover-glow-premium {
+  transition: var(--transition-smooth);
+}
+
+.hover-glow-premium:hover {
+  filter: brightness(1.2);
+  transform: translateY(-5px) scale(1.01);
+  text-shadow: 0 0 20px var(--neon-teal-glow);
 }

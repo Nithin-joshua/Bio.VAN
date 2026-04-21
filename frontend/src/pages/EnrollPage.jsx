@@ -1,6 +1,6 @@
 import React, { useState, Component } from 'react';
 import { Link } from 'react-router-dom';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useToast } from '../context/ToastContext';
 import Button from '../components/core/Button';
 import Logo from '../components/core/Logo';
@@ -56,10 +56,12 @@ class ErrorBoundary extends Component {
 const EnrollPage = () => {
   const { showToast } = useToast();
 
-  // Track current step in the enrollment process (0=Profile, 1-3=Samples, 4=Success)
+  // Track current step in the enrollment process (0=Profile, 1-3=Samples, 4=Success, 5=Conflict)
   const [currentStep, setCurrentStep] = useState(0);
   const [isSubmittingToServer, setIsSubmittingToServer] = useState(false);
   const [generatedUserId, setGeneratedUserId] = useState(null);
+  const [hasConflict, setHasConflict] = useState(false);
+  const [conflictMessage, setConflictMessage] = useState("");
 
   // Alert Modal State
   const [alertState, setAlertState] = useState({
@@ -183,15 +185,13 @@ const EnrollPage = () => {
             errorMessage.includes("already present") || 
             errorMessage.includes("Duplicate voice") ||
             errorMessage.includes("already enrolled") ||
-            errorMessage.includes("Biometric Security Alert");
+            errorMessage.includes("Biometric Security Alert") ||
+            errorMessage.includes("Biometric Integrity Alert");
 
           if (isDuplicate) {
-            setAlertState({
-              show: true,
-              title: "VOICE SIGNATURE MATCH DETECTED",
-              message: errorMessage,
-              type: "error"
-            });
+            setConflictMessage(errorMessage);
+            setHasConflict(true);
+            setCurrentStep(5); // Move to Conflict View
           } else {
             showToast(errorMessage, "error");
           }
@@ -357,12 +357,14 @@ const EnrollPage = () => {
                         status={isSubmittingToServer ? 'processing' : (isRecording ? 'recording' : (hasRecording ? 'success' : 'idle'))}
                         size={60}
                       />
-                      <div
+                      <button
+                        type="button"
+                        aria-label={isRecording ? 'Stop Recording' : 'Start Recording'}
                         className={`player-btn-main ${isRecording ? 'recording' : ''}`}
                         onClick={() => toggleRecording(currentSampleId)}
                       >
                         {isRecording ? <div className="icon-stop" /> : <div className="icon-play" />}
-                      </div>
+                      </button>
                     </div>
 
                     {/* Next Step */}
@@ -377,27 +379,35 @@ const EnrollPage = () => {
                     </button>
                   </div>
 
-                  <div style={{ textAlign: 'center', marginTop: '1.5rem', color: 'var(--text-secondary)', fontSize: '0.7rem', fontFamily: 'var(--font-mono)' }}>
-                    {isRecording ? "LISTENING..." : (hasRecording ? "VOICE SAVED" : "AWAITING ACTION")}
-                  </div>
+                  <div style={{ 
+                    marginTop: '1rem', 
+                    display: 'flex', 
+                    flexDirection: 'column', 
+                    alignItems: 'center', 
+                    gap: '12px' 
+                  }}>
+                    <div style={{ color: 'var(--text-secondary)', fontSize: '0.7rem', fontFamily: 'var(--font-mono)' }}>
+                      {isRecording ? "LISTENING..." : (hasRecording ? "VOICE SAVED" : "AWAITING ACTION")}
+                    </div>
 
-                  {/* Step Indicators */}
-                  <div style={{ display: 'flex', justifyContent: 'center', gap: '10px', marginTop: '15px' }}>
-                    {[1, 2, 3].map(step => {
-                      const sId = PHONETIC_PARAGRAPHS[step - 1].id;
-                      const isBuffered = !!enrollmentData.recordings[sId];
-                      return (
-                        <div
-                          key={sId}
-                          style={{
-                            width: '40px', height: '3px',
-                            background: isBuffered ? 'var(--neon-blue)' : 'rgba(255,255,255,0.1)',
-                            boxShadow: isBuffered ? '0 0 10px var(--neon-blue)' : 'none',
-                            transition: 'all 0.3s'
-                          }}
-                        />
-                      );
-                    })}
+                    {/* Step Indicators */}
+                    <div style={{ display: 'flex', justifyContent: 'center', gap: '10px' }}>
+                      {[1, 2, 3].map(step => {
+                        const sId = PHONETIC_PARAGRAPHS[step - 1].id;
+                        const isBuffered = !!enrollmentData.recordings[sId];
+                        return (
+                          <div
+                            key={sId}
+                            style={{
+                              width: '40px', height: '3px',
+                              background: isBuffered ? 'var(--neon-blue)' : 'rgba(255,255,255,0.1)',
+                              boxShadow: isBuffered ? '0 0 10px var(--neon-blue)' : 'none',
+                              transition: 'all 0.3s'
+                            }}
+                          />
+                        );
+                      })}
+                    </div>
                   </div>
                 </div>
               </Card>
@@ -424,6 +434,51 @@ const EnrollPage = () => {
             </Link>
           </div>
         );
+      case 5:
+        // Step 6: Biometric Conflict Detected
+        return (
+          <motion.div 
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            style={{ textAlign: 'center', maxWidth: '450px', width: '100%', marginLeft: 'auto', marginRight: 'auto' }}
+          >
+            <div className="security-alert-card" style={{ 
+              padding: '2.5rem', 
+              border: '2px solid var(--neon-red)', 
+              background: 'rgba(255, 0, 0, 0.05)',
+              boxShadow: 'inset 0 0 20px rgba(255, 0, 0, 0.1), 0 0 30px rgba(255, 0, 0, 0.05)',
+              borderRadius: '8px',
+              position: 'relative',
+              overflow: 'hidden'
+            }}>
+              {/* Decorative Alarm Pattern */}
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '4px', background: 'repeating-linear-gradient(90deg, var(--neon-red), var(--neon-red) 10px, transparent 10px, transparent 20px)' }}></div>
+              
+              <div style={{ color: 'var(--neon-red)', fontSize: '3rem', marginBottom: '1.5rem', fontWeight: 'bold' }}>⚠</div>
+              <h2 style={{ color: 'var(--neon-red)', marginBottom: '1rem', fontFamily: 'var(--font-header)', letterSpacing: '2px' }}>IDENTITY CONFLICT</h2>
+              <div style={{ margin: '1.5rem 0', padding: '1rem', background: 'rgba(0,0,0,0.4)', borderRadius: '4px', borderLeft: '3px solid var(--neon-red)' }}>
+                <p style={{ color: 'white', fontSize: '0.9rem', lineHeight: '1.6', textAlign: 'left', fontFamily: 'var(--font-mono)' }}>
+                  {conflictMessage}
+                </p>
+              </div>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '2rem' }}>
+                Our biometric sensors have identified this voice signature in the master record. Enrollment is restricted to unique identities.
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                <Button variant="outline" onClick={() => {
+                  setHasConflict(false);
+                  setCurrentStep(0);
+                  setEnrollmentData(prev => ({ ...prev, recordings: {} }));
+                }} style={{ width: '100%', borderColor: 'var(--neon-red)', color: 'var(--neon-red)' }}>
+                  RESTART ENROLLMENT
+                </Button>
+                <Link to="/">
+                  <Button variant="secondary" style={{ width: '100%' }}>BACK TO HOME</Button>
+                </Link>
+              </div>
+            </div>
+          </motion.div>
+        );
       default:
         return null;
     }
@@ -432,12 +487,12 @@ const EnrollPage = () => {
   return (
     <ErrorBoundary>
       <div className="page-container" style={{ 
-        minHeight: '100vh', 
+        minHeight: '100dvh', 
         display: 'flex', 
         flexDirection: 'column', 
         alignItems: 'center',
-        padding: '2rem 0',
-        position: 'relative' // Ensure relative positioning for footer anchoring
+        padding: 'clamp(1rem, 4vw, 2rem) 0',
+        position: 'relative'
       }}>
         {alertState.show && (
           <AlertModal
@@ -449,16 +504,15 @@ const EnrollPage = () => {
         )}
         <SystemStatus />
         
-        {/* Step Progression Header */}
         <div className="section-container" style={{ 
           flex: 1, 
           display: 'flex', 
           flexDirection: 'column', 
           alignItems: 'center', 
-          justifyContent: 'center', 
+          justifyContent: 'flex-start', 
           width: '100%',
-          padding: '1rem',
-          marginBottom: '2rem' // Add space before build info
+          padding: '0.5rem 1rem 1rem',
+          marginBottom: '2rem'
         }}>
           <div style={{ width: '100%', maxWidth: '800px', marginBottom: '1.5rem' }}>
             <StepIndicator currentStep={currentStep === 4 ? 3 : (currentStep === 0 ? 1 : 2)} />
@@ -466,21 +520,20 @@ const EnrollPage = () => {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            style={{ width: '100%', maxWidth: '580px' }}
+            style={{ width: '100%', maxWidth: '1000px' }}
           >
             <div className="unified-system-card" style={{ position: 'relative' }}>
               <div className="status-pill" style={{ position: 'absolute', top: '1rem', right: '1rem', zIndex: 10 }}>
-                <span className="status-indicator active"></span>
-                ENROLLMENT_PROTOCOL
+                <span className={`status-indicator ${hasConflict ? 'warning' : 'active'}`}></span>
+                {hasConflict ? 'SECURITY_INTERRUPT' : 'ENROLLMENT_PROTOCOL'}
               </div>
-              <div className="system-section" style={{ padding: '2.5rem' }}>
+              <div className="system-section" style={{ padding: 'clamp(1.25rem, 4vw, 2.5rem)' }}>
                 {renderProtocolInterface()}
               </div>
             </div>
           </motion.div>
         </div>
 
-        {/* Build info remains at the bottom of the page container */}
         <div style={{ paddingBottom: '1rem', color: 'var(--text-muted)', fontSize: '0.7rem', fontFamily: 'var(--font-mono)', letterSpacing: '2px', opacity: 0.5 }}>
           SECURE_GATEWAY // B.V_PROT_V2.5
         </div>

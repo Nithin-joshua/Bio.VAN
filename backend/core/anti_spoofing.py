@@ -8,6 +8,7 @@ except ImportError:
     welch = None
 
 from core.rawnet_model import RawNet2
+from config.settings import LIVENESS_THRESHOLD
 # Default RawNet2 Config (matches ASVspoof baseline)
 # Architecture parameters for the anti-spoofing model
 RAWNET_CONFIG = {
@@ -209,7 +210,7 @@ class LivenessDetector:
             final_score = heuristic_score
             final_reason = heuristic_reason + " (Heuristic Only)"
 
-        is_live = final_score > 0.5
+        is_live = final_score >= LIVENESS_THRESHOLD
         if not is_live and status == "live":
             # Refine non-live cases that are not clear spoofs
             if energy < 5e-5 or "Muffled Audio" in heuristic_reason:
@@ -218,7 +219,7 @@ class LivenessDetector:
                 status = "spoof"
         
         end_time = time.time()
-        print(f"DEBUG: Final Liveness Score: {final_score:.4f} (Threshold: 0.60) -> {is_live}. Time: {end_time - start_time:.4f}s")
+        print(f"DEBUG: Final Liveness Score: {final_score:.4f} (Threshold: {LIVENESS_THRESHOLD:.2f}) -> {is_live}. Time: {end_time - start_time:.4f}s")
 
         metrics = {
             "energy": float(energy),

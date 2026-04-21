@@ -11,10 +11,10 @@ class Particle {
   reset(canvas) {
     this.x = Math.random() * canvas.width;
     this.y = Math.random() * canvas.height;
-    this.size = Math.random() * 4 + 2; // Further increased size: 2px to 6px
-    this.speedY = Math.random() * 0.3 + 0.1; 
-    this.opacity = Math.random() * 0.5 + 0.3; // Increased min opacity to 0.3
-    this.fadeDirection = Math.random() > 0.5 ? 0.005 : -0.005;
+    this.size = Math.random() * 2.5 + 1.5;
+    this.speedY = Math.random() * 0.18 + 0.08;
+    this.opacity = Math.random() * 0.28 + 0.12;
+    this.fadeDirection = Math.random() > 0.5 ? 0.003 : -0.003;
   }
 
   update(canvas) {
@@ -34,14 +34,10 @@ class Particle {
   }
 
   draw(ctx) {
-    ctx.fillStyle = `rgba(0, 255, 200, ${this.opacity})`; // Refined Teal
+    ctx.fillStyle = `rgba(0, 255, 200, ${this.opacity})`;
     ctx.beginPath();
     ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
     ctx.fill();
-
-    // Subtle glow
-    ctx.shadowBlur = 15;
-    ctx.shadowColor = "rgba(0, 255, 200, 0.6)";
   }
 }
 
@@ -56,29 +52,39 @@ const BackgroundGrid = () => {
     const ctx = canvas.getContext('2d');
     let animationFrameId;
     let particles = [];
+    let viewportWidth = window.innerWidth;
+    let viewportHeight = window.innerHeight;
 
-    // Resize canvas
     const resizeCanvas = () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-    };
-    window.addEventListener('resize', resizeCanvas);
-    resizeCanvas();
+      viewportWidth = window.innerWidth;
+      viewportHeight = window.innerHeight;
 
-    // Init Particles
+      canvas.width = viewportWidth;
+      canvas.height = viewportHeight;
+      canvas.style.width = `${viewportWidth}px`;
+      canvas.style.height = `${viewportHeight}px`;
+    };
+
     const initParticles = () => {
       particles = [];
-      // Increased density for more visual impact
-      const particleCount = 40; 
+      const particleCount = shouldReduceMotion
+        ? 10
+        : viewportWidth < 640
+          ? 12
+          : viewportWidth < 1024
+            ? 18
+            : 26;
+
       for (let i = 0; i < particleCount; i++) {
         particles.push(new Particle(canvas));
       }
     };
-    initParticles();
 
-    // Animation Loop
     const animate = () => {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.clearRect(0, 0, viewportWidth, viewportHeight);
+      ctx.shadowBlur = shouldReduceMotion ? 0 : 8;
+      ctx.shadowColor = 'rgba(0, 255, 200, 0.35)';
+
       particles.forEach(p => {
         if (!shouldReduceMotion) {
           p.update(canvas);
@@ -86,19 +92,24 @@ const BackgroundGrid = () => {
         p.draw(ctx);
       });
 
+      ctx.shadowBlur = 0;
+
       if (!shouldReduceMotion) {
         animationFrameId = window.requestAnimationFrame(animate);
-      } else {
-        // Draw one frame and stop
-        particles.forEach(p => p.draw(ctx));
       }
     };
-    
-    // Initial draw
+
+    const handleResize = () => {
+      resizeCanvas();
+      initParticles();
+    };
+
+    window.addEventListener('resize', handleResize);
+    handleResize();
     animate();
 
     return () => {
-      window.removeEventListener('resize', resizeCanvas);
+      window.removeEventListener('resize', handleResize);
       if (animationFrameId) {
         window.cancelAnimationFrame(animationFrameId);
       }
@@ -126,8 +137,8 @@ const BackgroundGrid = () => {
           position: fixed;
           top: 0;
           left: 0;
-          width: 100vw;
-          height: 100vh;
+          width: 100%;
+          height: 100dvh;
           z-index: 0;
           overflow: hidden;
           background: var(--bg-dark);
@@ -152,35 +163,35 @@ const BackgroundGrid = () => {
           width: 100%;
           height: 2px;
           background: linear-gradient(90deg, transparent, var(--neon-blue), transparent);
-          opacity: 0.1;
+          opacity: 0.06;
           box-shadow: 0 0 15px var(--neon-blue);
-          animation: ${shouldReduceMotion ? 'none' : 'scan 8s linear infinite'};
+          animation: ${shouldReduceMotion ? 'none' : 'scan 12s linear infinite'};
           z-index: 10;
         }
 
         .aurora-blob {
           position: absolute;
           border-radius: 50%;
-          filter: blur(140px);
-          opacity: 0.03; /* Lowered further per 40-60% requirement */
-          animation: ${shouldReduceMotion ? 'none' : 'float 30s ease-in-out infinite'};
+          filter: blur(90px);
+          opacity: 0.025;
+          animation: ${shouldReduceMotion ? 'none' : 'float 40s ease-in-out infinite'};
         }
 
         .blob-1 {
           top: 10%;
           left: -10%;
-          width: 800px;
-          height: 800px;
+          width: 620px;
+          height: 620px;
           background: var(--neon-blue);
         }
 
         .blob-2 {
           bottom: -10%;
           right: -10%;
-          width: 900px;
-          height: 900px;
+          width: 700px;
+          height: 700px;
           background: var(--neon-purple);
-          animation-delay: -15s;
+          animation-delay: -20s;
         }
 
         .particles-canvas {
@@ -210,6 +221,24 @@ const BackgroundGrid = () => {
         @keyframes float {
           0%, 100% { transform: translate(0, 0) scale(1); }
           50% { transform: translate(50px, -50px) scale(1.1); }
+        }
+
+        @media (max-width: 768px) {
+          .scanner-line {
+            animation: none;
+            opacity: 0.04;
+          }
+
+          .aurora-blob {
+            filter: blur(60px);
+            opacity: 0.02;
+          }
+
+          .blob-1,
+          .blob-2 {
+            width: 360px;
+            height: 360px;
+          }
         }
       `}</style>
     </div>

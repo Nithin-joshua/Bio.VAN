@@ -1,20 +1,27 @@
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef } from 'react';
 import '../../styles/theme.css';
 
 const Card = ({ title, children, status, className = '', style = {} }) => {
   const cardRef = useRef(null);
-  const [cursor, setCursor] = useState({ x: 0, y: 0 });
-  const [opacity, setOpacity] = useState(0);
+  const supportsPointerEffects = useRef(false);
 
-  const handleMouseMove = (e) => {
+  useEffect(() => {
+    supportsPointerEffects.current = window.matchMedia('(pointer: fine)').matches;
+  }, []);
+
+  const handlePointerMove = (e) => {
+    if (!supportsPointerEffects.current) return;
     if (!cardRef.current) return;
+
     const rect = cardRef.current.getBoundingClientRect();
-    setCursor({ x: e.clientX - rect.left, y: e.clientY - rect.top });
-    setOpacity(1);
+    cardRef.current.style.setProperty('--spotlight-x', `${e.clientX - rect.left}px`);
+    cardRef.current.style.setProperty('--spotlight-y', `${e.clientY - rect.top}px`);
+    cardRef.current.style.setProperty('--spotlight-opacity', '1');
   };
 
-  const handleMouseLeave = () => {
-    setOpacity(0);
+  const handlePointerLeave = () => {
+    if (!cardRef.current) return;
+    cardRef.current.style.setProperty('--spotlight-opacity', '0');
   };
 
   const baseStyle = {
@@ -25,7 +32,11 @@ const Card = ({ title, children, status, className = '', style = {} }) => {
     padding: '1.5rem',
     position: 'relative',
     overflow: 'hidden',
-    boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.37)'
+    boxShadow: '0 8px 32px 0 rgba(0, 0, 0, 0.37)',
+    transition: 'transform 0.6s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.6s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.6s cubic-bezier(0.16, 1, 0.3, 1)',
+    '--spotlight-x': '50%',
+    '--spotlight-y': '50%',
+    '--spotlight-opacity': 0
   };
 
   const mergedStyle = { ...baseStyle, ...style };
@@ -35,7 +46,7 @@ const Card = ({ title, children, status, className = '', style = {} }) => {
     fontSize: '0.8rem',
     color: 'var(--text-secondary)',
     marginBottom: '1rem',
-    borderBottom: '1px solid var(--text-secondary)',
+    borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
     paddingBottom: '0.5rem',
     display: 'flex',
     justifyContent: 'space-between',
@@ -50,10 +61,10 @@ const Card = ({ title, children, status, className = '', style = {} }) => {
       ref={cardRef}
       className={`glass-card ${className}`}
       style={mergedStyle}
-      onMouseMove={handleMouseMove}
-      onMouseLeave={handleMouseLeave}
+      onPointerMove={handlePointerMove}
+      onPointerLeave={handlePointerLeave}
     >
-      {/* SPOTLIGHT EFFECT */}
+      {/* SPOTLIGHT EFFECT - Softened */}
       <div
         style={{
           pointerEvents: 'none',
@@ -62,14 +73,14 @@ const Card = ({ title, children, status, className = '', style = {} }) => {
           left: 0,
           width: '100%',
           height: '100%',
-          opacity: opacity,
-          background: `radial-gradient(600px circle at ${cursor.x}px ${cursor.y}px, rgba(0, 243, 255, 0.15), transparent 40%)`,
-          transition: 'opacity 0.3s',
+          opacity: 'var(--spotlight-opacity)',
+          background: 'radial-gradient(800px circle at var(--spotlight-x) var(--spotlight-y), rgba(0, 243, 255, 0.08), transparent 40%)',
+          transition: 'opacity 0.5s ease',
           zIndex: 1
         }}
       />
 
-      {/* BORDER GLOW LAYER */}
+      {/* BORDER GLOW LAYER - Subtle */}
       <div
         style={{
           pointerEvents: 'none',
@@ -78,25 +89,28 @@ const Card = ({ title, children, status, className = '', style = {} }) => {
           left: 0,
           width: '100%',
           height: '100%',
-          opacity: opacity,
-          background: `radial-gradient(600px circle at ${cursor.x}px ${cursor.y}px, rgba(0, 243, 255, 0.4), transparent 40%)`,
+          opacity: 'calc(var(--spotlight-opacity) * 0.5)',
+          background: 'radial-gradient(400px circle at var(--spotlight-x) var(--spotlight-y), rgba(0, 243, 255, 0.3), transparent 60%)',
           zIndex: 3,
           maskImage: 'linear-gradient(#fff, #fff), linear-gradient(#fff, #fff)',
           maskClip: 'content-box, border-box',
           maskComposite: 'exclude',
           padding: '1px',
           borderRadius: '12px',
-          content: '""',
           inset: 0
         }}
       />
 
       {/* CONTENT */}
-      <div style={{ position: 'relative', zIndex: 2 }}>
+      <div style={{ position: 'relative', zIndex: 10 }}>
         {title && (
           <div style={headerStyle}>
             <span>{title}</span>
-            {status && <span style={{ color: 'var(--neon-green)' }}>{status}</span>}
+            {status && <span style={{ 
+              color: status === 'LIVE' || status === 'READY' || status === 'ACTIVE' || status === 'VERIFIED' ? 'var(--neon-green)' : 
+                     status === 'LOCKED' ? 'var(--neon-red)' : 'var(--neon-blue)',
+              textShadow: '0 0 10px currentColor'
+            }}>{status}</span>}
           </div>
         )}
         <div style={{ height: '100%' }}>{children}</div>
@@ -114,6 +128,14 @@ const Card = ({ title, children, status, className = '', style = {} }) => {
         pointerEvents: 'none',
         zIndex: 0
       }} />
+
+      <style>{`
+        .glass-card:hover {
+          transform: translateY(-8px) scale(1.02);
+          border-color: rgba(0, 243, 255, 0.4);
+          box-shadow: 0 20px 40px rgba(0, 0, 0, 0.6), 0 0 20px rgba(0, 243, 255, 0.1);
+        }
+      `}</style>
     </div>
   );
 };

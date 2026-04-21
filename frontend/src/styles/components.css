@@ -147,7 +147,7 @@
 
 /* --- LAYOUT UTILITIES --- */
 .section-container {
-  max-width: 1200px;
+  max-width: 1400px;
   margin: 0 auto;
   padding: 6rem 2rem;
   position: relative;
@@ -155,7 +155,7 @@
 }
 
 .text-container {
-  max-width: 700px;
+  max-width: 900px;
   margin-bottom: 3rem;
 }
 
@@ -358,7 +358,7 @@
 
 /* --- STEP INDICATOR REFINEMENT --- */
 .step-indicator-container {
-    padding: 2rem 0 !important;
+    padding: 1rem 0 !important;
 }
 
 .step-item.active .step-number {

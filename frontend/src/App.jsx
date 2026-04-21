@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import HomePage from './pages/HomePage';
 import VerifyPage from './pages/VerifyPage';
 import EnrollPage from './pages/EnrollPage';
@@ -22,6 +22,16 @@ import BackgroundGrid from './components/ui/BackgroundGrid';
 // Context providers
 import { ToastProvider } from './context/ToastContext'; // Provides global toast notifications
 
+const ScrollToTop = () => {
+  const location = useLocation();
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  }, [location.pathname]);
+
+  return null;
+};
+
 /**
  * Main Application Component
  * Sets up routing, global providers, and persistent UI elements.
@@ -35,67 +45,51 @@ import { ToastProvider } from './context/ToastContext'; // Provides global toast
 // Handles route transitions using Framer Motion
 const AnimatedRoutes = () => {
   const location = useLocation();
+  const shouldReduceMotion = useReducedMotion();
+  const easePremium = [0.16, 1, 0.3, 1]; // cubic-bezier(0.16, 1, 0.3, 1)
+  const routeMotionProps = shouldReduceMotion
+    ? {
+        initial: { opacity: 1 },
+        animate: { opacity: 1 },
+        exit: { opacity: 1 },
+        transition: { duration: 0 },
+      }
+    : {
+        initial: { opacity: 0, y: 14 },
+        animate: { opacity: 1, y: 0 },
+        exit: { opacity: 0, y: -10 },
+        transition: { duration: 0.28, ease: easePremium },
+      };
 
   return (
-    <AnimatePresence mode="wait">
-      {/* Routes are keyed by pathname to trigger re-renders on navigation */}
+    <AnimatePresence mode="wait" initial={false}>
       <Routes location={location} key={location.pathname}>
-        {/* Landing page with feature overview */}
         <Route path="/" element={
-          <motion.div
-            initial={{ opacity: 0, y: 20 }} // Start slightly below and transparent
-            animate={{ opacity: 1, y: 0 }}  // Animate to center and fully visible
-            exit={{ opacity: 0, y: -20 }}   // Exit slightly above and transparent
-            transition={{ duration: 0.3 }}
-          >
+          <motion.div className="app-route-shell" {...routeMotionProps}>
             <HomePage />
           </motion.div>
         } />
 
-        {/* Voice verification/authentication page */}
         <Route path="/verify" element={
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.3 }}
-          >
+          <motion.div className="app-route-shell" {...routeMotionProps}>
             <VerifyPage />
           </motion.div>
         } />
 
-        {/* New user enrollment with voice samples */}
         <Route path="/enroll" element={
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.3 }}
-          >
+          <motion.div className="app-route-shell" {...routeMotionProps}>
             <EnrollPage />
           </motion.div>
         } />
 
-        {/* Admin login gateway */}
         <Route path="/admin" element={
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.3 }}
-          >
+          <motion.div className="app-route-shell" {...routeMotionProps}>
             <AdminLoginPage />
           </motion.div>
         } />
 
-        {/* Admin dashboard (requires authentication) */}
         <Route path="/admin/dashboard" element={
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.3 }}
-          >
+          <motion.div className="app-route-shell" {...routeMotionProps}>
             <AdminPage />
           </motion.div>
         } />
@@ -105,10 +99,10 @@ const AnimatedRoutes = () => {
 };
 
 function App() {
-  console.log("App Rendering...");
   return (
     <ToastProvider>
       <Router>
+        <ScrollToTop />
         {/* Fixed Background (remains static across all pages for consistency) */}
         <BackgroundGrid />
 

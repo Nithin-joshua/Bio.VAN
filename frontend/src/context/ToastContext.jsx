@@ -63,8 +63,9 @@ export const ToastProvider = ({ children }) => {
                 padding: '20px',
                 display: 'flex',
                 flexDirection: 'column',
-                gap: '10px',
-                pointerEvents: 'none'  // Allow clicks to pass through empty space
+                gap: '12px',
+                pointerEvents: 'none',
+                zIndex: 9999
             }}>
                 {toasts.map(toast => (
                     <div key={toast.id} style={{ pointerEvents: 'auto' }}>  {/* Re-enable clicks on actual toasts */}

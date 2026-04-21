@@ -1,22 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { motion, useScroll, useTransform } from 'framer-motion';
+import { motion, useScroll, useTransform, useMotionValue, useSpring, useReducedMotion } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import Button from '../core/Button';
 import Logo from '../core/Logo';
 
-// Typing effect hook - resets on scroll
-const useTypingEffect = (text, speed = 100, delay = 0, triggerReset = false) => {
+// Typing effect hook for progressive reveal
+const useTypingEffect = (text, speed = 100, delay = 0) => {
     const [displayedText, setDisplayedText] = useState('');
     const [started, setStarted] = useState(false);
 
     useEffect(() => {
-        // Reset on scroll trigger
         setDisplayedText('');
         setStarted(false);
-        
+
         const timer = setTimeout(() => setStarted(true), delay);
         return () => clearTimeout(timer);
-    }, [delay, triggerReset]);
+    }, [delay, text]);
 
     useEffect(() => {
         if (!started) return;
@@ -33,59 +32,90 @@ const useTypingEffect = (text, speed = 100, delay = 0, triggerReset = false) => 
 
 // Word animation variants
 const wordVariants = {
-    hidden: { opacity: 0, y: 20, rotateZ: -10 },
+    hidden: { opacity: 0, y: 30, scale: 0.9, filter: 'blur(10px)' },
     visible: (i) => ({
         opacity: 1,
         y: 0,
-        rotateZ: 0,
+        scale: 1,
+        filter: 'blur(0px)',
         transition: {
-            delay: i * 0.1,
-            duration: 0.8,
-            ease: "easeOut"
+            delay: i * 0.08,
+            duration: 1.0,
+            ease: [0.16, 1, 0.3, 1]
         }
     }),
     hover: {
-        scale: 1.1,
+        scale: 1.05,
         y: -5,
-        textShadow: '4px 4px 0px #00CC99',
-        transition: { duration: 0.2 }
-    }
-};
-
-// Glowing text animation
-const glowVariants = {
-    initial: { opacity: 0.5 },
-    animate: {
-        opacity: [0.5, 1, 0.5],
-        transition: {
-            duration: 3,
-            repeat: Infinity,
-            ease: "easeInOut"
-        }
+        textShadow: '0 0 20px var(--neon-teal-glow)',
+        transition: { duration: 0.4, ease: "easeOut" }
     }
 };
 
 const HeroSection = () => {
     const { scrollY } = useScroll();
-    const [scrollTrigger, setScrollTrigger] = useState(0);
+    const shouldReduceMotion = useReducedMotion();
+
+    // Mouse movement parallax
+    const mouseX = useMotionValue(0);
+    const mouseY = useMotionValue(0);
     
-    // Reset typing effect on scroll
+    const springConfig = { damping: 25, stiffness: 150 };
+    const xSpring = useSpring(mouseX, springConfig);
+    const ySpring = useSpring(mouseY, springConfig);
+    
+    const heroTranslateX = useTransform(xSpring, [-500, 500], [-15, 15]);
+    const heroTranslateY = useTransform(ySpring, [-500, 500], [-10, 10]);
+    const heroRotateY = useTransform(heroTranslateX, [-15, 15], [-5, 5]);
+    const heroRotateX = useTransform(heroTranslateY, [-10, 10], [5, -5]);
+
     useEffect(() => {
-        const handleScroll = () => {
-            setScrollTrigger(prev => prev + 1);
+        if (shouldReduceMotion) {
+            mouseX.set(0);
+            mouseY.set(0);
+            return undefined;
+        }
+
+        const pointerQuery = window.matchMedia('(pointer: fine)');
+        let parallaxEnabled = false;
+
+        const updateParallaxMode = () => {
+            parallaxEnabled = pointerQuery.matches && window.innerWidth >= 1024;
+
+            if (!parallaxEnabled) {
+                mouseX.set(0);
+                mouseY.set(0);
+            }
         };
-        
-        window.addEventListener('scroll', handleScroll);
-        return () => window.removeEventListener('scroll', handleScroll);
-    }, []);
+
+        const handleMouseMove = (e) => {
+            if (!parallaxEnabled) {
+                return;
+            }
+
+            mouseX.set(e.clientX - window.innerWidth / 2);
+            mouseY.set(e.clientY - window.innerHeight / 2);
+        };
+
+        updateParallaxMode();
+        window.addEventListener('mousemove', handleMouseMove, { passive: true });
+        window.addEventListener('resize', updateParallaxMode);
+        pointerQuery.addEventListener?.('change', updateParallaxMode);
+
+        return () => {
+            window.removeEventListener('mousemove', handleMouseMove);
+            window.removeEventListener('resize', updateParallaxMode);
+            pointerQuery.removeEventListener?.('change', updateParallaxMode);
+        };
+    }, [mouseX, mouseY, shouldReduceMotion]);
     
     // Parallax/Transform effects based on scroll
-    const textY = useTransform(scrollY, [0, 500], [0, 150]);
-    const textOpacity = useTransform(scrollY, [0, 300], [1, 0]);
-    const textScale = useTransform(scrollY, [0, 500], [1, 0.9]);
+    const textYOffset = useTransform(scrollY, [0, 500], [0, shouldReduceMotion ? 0 : 12]);
+    const textOpacity = useTransform(scrollY, [0, 500], [1, 0.92]);
+    const textScale = useTransform(scrollY, [0, 500], [1, 0.985]);
 
-    const line1 = useTypingEffect("SECURE YOUR IDENTITY", 70, 500, scrollTrigger);
-    const line2 = useTypingEffect("WITH YOUR VOICE", 70, 2000, scrollTrigger);
+    const line1 = useTypingEffect("SECURE YOUR IDENTITY", shouldReduceMotion ? 0 : 60, shouldReduceMotion ? 0 : 400);
+    const line2 = useTypingEffect("WITH YOUR VOICE", shouldReduceMotion ? 0 : 60, shouldReduceMotion ? 0 : 1800);
 
     // Split text into words for individual animations
     const line1Words = line1.split(' ');
@@ -93,35 +123,36 @@ const HeroSection = () => {
 
     // Button animation variants
     const buttonVariants = {
-        hidden: { opacity: 0, y: 20 },
+        hidden: { opacity: 0, y: 20, scale: 0.95 },
         visible: (i) => ({
             opacity: 1,
             y: 0,
+            scale: 1,
             transition: {
-                delay: 2.8 + (i * 0.2),
-                duration: 0.6,
-                ease: "easeOut"
+                delay: 2.6 + (i * 0.15),
+                duration: 0.8,
+                ease: [0.16, 1, 0.3, 1]
             }
         }),
         hover: {
-            scale: 1.05,
-            y: -3,
-            textShadow: '2px 2px 0px rgba(0, 204, 153, 0.6)',
-            transition: { duration: 0.2 }
+            scale: 1.04,
+            y: -5,
+            boxShadow: '0 0 30px var(--neon-teal-glow)',
+            transition: { duration: 0.3 }
         }
     };
 
     return (
         <div className="fluid-container" style={{ 
-            minHeight: '70vh', 
+            minHeight: 'clamp(34rem, 88svh, 48rem)',
             display: 'flex', 
             flexDirection: 'column', 
             justifyContent: 'center', 
             alignItems: 'center',
-            padding: '2rem 2rem', 
+            padding: 'clamp(2rem, 5vw, 3.5rem) clamp(1rem, 4vw, 2rem) clamp(1rem, 3vw, 1.5rem)', 
             position: 'relative',
             textAlign: 'center',
-            overflow: 'hidden'
+            overflow: 'clip'
         }}>
             
             {/* BACKGROUND GLOW & OVERLAY */}
@@ -135,7 +166,7 @@ const HeroSection = () => {
             }} />
 
             {/* LOGO POSITIONED LEFT */}
-            <div style={{ position: 'absolute', top: '40px', left: '40px', zIndex: 50 }}>
+            <div style={{ position: 'absolute', top: 'clamp(1rem, 4vw, 2.5rem)', left: 'clamp(1rem, 4vw, 2.5rem)', zIndex: 50 }}>
                 <Logo size="medium" />
             </div>
 
@@ -143,9 +174,13 @@ const HeroSection = () => {
             <motion.div style={{ 
                 position: 'relative', 
                 zIndex: 10, 
-                maxWidth: '1000px', 
+                maxWidth: '1100px', 
                 textAlign: 'center',
-                y: textY,
+                margin: '0 auto',
+                y: textYOffset,
+                x: shouldReduceMotion ? 0 : heroTranslateX,
+                rotateY: shouldReduceMotion ? 0 : heroRotateY,
+                rotateX: shouldReduceMotion ? 0 : heroRotateX,
                 opacity: textOpacity,
                 scale: textScale
             }}>
@@ -155,15 +190,15 @@ const HeroSection = () => {
                     style={{ 
                         marginBottom: '0.2rem', 
                         lineHeight: '1',
-                        fontSize: 'clamp(4rem, 14vw, 9.5rem)',
+                        fontSize: 'clamp(4rem, 11vw, 8.5rem)',
                         color: '#FFFFFF',
-                        textShadow: '3px 3px 0px #00CC99, 6px 6px 0px rgba(0, 204, 153, 0.5)',
+                        textShadow: '2px 2px 0px rgba(0, 204, 153, 0.85), 4px 4px 0px rgba(0, 204, 153, 0.35)',
                         fontFamily: 'var(--font-header)',
                         fontWeight: 'bold',
-                        minHeight: '1.2em',
+                        minHeight: '1.25em',
                         display: 'flex',
                         justifyContent: 'center',
-                        gap: '0.3em',
+                        gap: '0.24em',
                         flexWrap: 'wrap',
                         letterSpacing: '0.02em'
                     }}
@@ -200,14 +235,14 @@ const HeroSection = () => {
                     style={{ 
                         marginBottom: '1rem', 
                         lineHeight: '1.1',
-                        fontSize: 'clamp(2rem, 7vw, 4rem)',
+                        fontSize: 'clamp(2rem, 6vw, 3.8rem)',
                         color: '#00CC99',
-                        textShadow: '2px 2px 0px rgba(0, 191, 165, 0.4)',
+                        textShadow: '1px 1px 0px rgba(0, 191, 165, 0.35)',
                         fontWeight: 'bold',
-                        minHeight: '1.2em',
+                        minHeight: '1.25em',
                         display: 'flex',
                         justifyContent: 'center',
-                        gap: '0.3em',
+                        gap: '0.24em',
                         flexWrap: 'wrap',
                         letterSpacing: '0.02em'
                     }}
@@ -234,17 +269,18 @@ const HeroSection = () => {
             {/* DESCRIPTION BLOCK - With fade-in animation */}
             <motion.div 
                 style={{ 
-                    maxWidth: '650px', 
-                    marginBottom: '1.5rem', 
+                    maxWidth: '800px', 
+                    marginBottom: '2.5rem', 
                     position: 'relative', 
                     zIndex: 10,
+                    margin: '0 auto 2.5rem auto',
                     opacity: textOpacity 
                 }}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 2.3, duration: 0.8 }}
             >
-                <p className="text-body" style={{ fontSize: '1.25rem', color: 'var(--text-secondary)', margin: '0 auto', lineHeight: '1.6' }}>
+                <p className="text-body" style={{ fontSize: 'clamp(1rem, 2vw, 1.15rem)', color: 'var(--text-secondary)', margin: '0 auto', lineHeight: '1.65' }}>
                     Welcome to the next generation of voice authentication. 
                     Simple, secure, and uniquely yours. Experience zero-trust access 
                     powered by advanced neural analysis.
@@ -252,7 +288,7 @@ const HeroSection = () => {
             </motion.div>
 
             {/* ACTION ROW - Enhanced Animations */}
-            <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', justifyContent: 'center', position: 'relative', zIndex: 10 }}>
+            <div style={{ display: 'flex', gap: '1.5rem', flexWrap: 'wrap', justifyContent: 'center', position: 'relative', zIndex: 10, width: '100%', maxWidth: '34rem' }}>
                 <motion.div
                     custom={0}
                     variants={buttonVariants}

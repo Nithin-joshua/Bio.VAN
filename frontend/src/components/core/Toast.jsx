@@ -22,9 +22,7 @@ const Toast = ({ message, type = 'info', onClose }) => {
 
     return (
         <div style={{
-            position: 'fixed',
-            bottom: '20px',
-            right: '20px',
+            position: 'relative',
             minWidth: '300px',
             padding: '1rem',
             background: '#050505',
@@ -39,7 +37,6 @@ const Toast = ({ message, type = 'info', onClose }) => {
             transform: visible ? 'translateX(0)' : 'translateX(100vh)',
             opacity: visible ? 1 : 0,
             transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
-            zIndex: 9999
         }}>
             <div style={{
                 color: colors.border,

@@ -11,15 +11,23 @@ import HeroSection from '../components/ui/HeroSection';
 // Animation Variants
 const HomePage = () => {
   const shouldReduceMotion = useReducedMotion();
+  const easePremium = [0.16, 1, 0.3, 1];
 
   const fadeInUp = {
-    initial: { opacity: 0, y: shouldReduceMotion ? 0 : 40 },
+    initial: { 
+      opacity: 0, 
+      y: shouldReduceMotion ? 0 : 60,
+      scale: shouldReduceMotion ? 1 : 0.95,
+      filter: 'blur(10px)'
+    },
     animate: {
       opacity: 1,
       y: 0,
+      scale: 1,
+      filter: 'blur(0px)',
       transition: { 
-        duration: shouldReduceMotion ? 0 : 0.6, 
-        ease: "easeOut" 
+        duration: shouldReduceMotion ? 0 : 0.8, 
+        ease: easePremium 
       }
     }
   };
@@ -27,7 +35,8 @@ const HomePage = () => {
   const staggerContainer = {
     animate: {
       transition: {
-        staggerChildren: 0.1
+        staggerChildren: 0.15,
+        delayChildren: 0.2
       }
     }
   };
