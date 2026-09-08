@@ -11,7 +11,7 @@ from pymilvus import (
     utility,
 )
 
-from config.settings import MILVUS_COLLECTION, EMBEDDING_DIM
+from config.settings import MILVUS_COLLECTION, EMBEDDING_DIM, MILVUS_HOST, MILVUS_PORT
 
 _collection = None
 
@@ -35,8 +35,8 @@ def init_milvus(retries: int = 10, delay: int = 2):
             # 1. Connect
             connections.connect(
                 alias="default",
-                host="localhost",
-                port="19530"
+                host=MILVUS_HOST,
+                port=MILVUS_PORT
             )
 
             # 2. Check/Create Collection
@@ -79,7 +79,7 @@ def init_milvus(retries: int = 10, delay: int = 2):
             print(f"Milvus not ready (attempt {attempt+1}/{retries}): {e}")
             try:
                  connections.disconnect("default")
-            except:
+            except Exception:
                  pass
             time.sleep(delay)
 
@@ -249,5 +249,4 @@ def get_all_embedding_ids() -> List[str]:
                 print(f"ERROR: Failed to fetch all embedding IDs: {e}")
                 raise e
     return []
-
 
