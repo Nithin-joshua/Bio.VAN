@@ -38,10 +38,11 @@ Bio.V is a next-generation decentralized voice authentication system leveraging 
 
 ### 1. Start Infrastructure
 
-Launch the database services (Milvus, PostgreSQL, Attu):
+Launch the database services (Milvus, PostgreSQL, Attu) from `backend`:
 
 ```bash
-docker-compose up -d
+cd backend
+docker compose up -d
 ```
 
 ### 2. Start Backend
@@ -106,7 +107,7 @@ Ensure your host firewall allows traffic on these ports if accessing remotely.
 * `/frontend`: React application source code.
 * `/backend`: FastAPI application and backend ML integration.
 * `/engine`: Core ML engine and pre-trained SpeechBrain models (ECAPA, RawNet2).
-* `/docker-compose.yml`: Infrastructure configuration.
+* `/backend/docker-compose.yml`: Infrastructure configuration.
 
 ## 🧪 Testing
 
@@ -127,13 +128,16 @@ cd frontend
 npm test
 ```
 
-For detailed testing procedures and reports, see **[`PROJECT_REPORT.md`](PROJECT_REPORT.md)**.
+The backend exposes `/health` with model readiness details. Production deployments must provide
+`POSTGRES_URL`, `SECRET_KEY`, `BIO_VAN_API_KEY`, `POSTGRES_PASSWORD`, `MINIO_ACCESS_KEY`, and
+`MINIO_SECRET_KEY` through the environment. Admin authentication uses secure HttpOnly cookies
+with CSRF protection for mutating requests.
 
 ## 📜 Recent Updates
 
 * **RawNet2 Anti-Spoofing**: Integrated advanced neural network (RawNet2) to detect synthetic and recorded audio attacks.
 * **Biometric Deduplication**: Prevents duplicate identities by scanning vector database for existing voiceprints before enrollment.
-* **Periodic Re-enrollment**: Enforces voice profile refresh every 90 days to account for aging and maintain accuracy.
+* **Periodic Re-enrollment**: Planned policy; current active profiles are not automatically expired.
 * **Adaptive Authentication**: Dynamically adjusts acceptance thresholds based on liveness confidence scores.
 * **ID Generation**: Implemented 10-digit secure alphanumeric ID system.
 * **Lore Terminal**: Replaced static lore text with a dynamic, animated terminal component.

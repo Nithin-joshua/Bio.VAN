@@ -23,9 +23,10 @@ const AdminLoginPage = () => {
       formData.append('username', email);
       formData.append('password', password);
 
-      const response = await fetch('http://127.0.0.1:8000/token', {
+      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://127.0.0.1:8000'}/token`, {
         method: 'POST',
         body: formData,
+        credentials: 'include',
       });
 
       if (!response.ok) {
@@ -33,8 +34,7 @@ const AdminLoginPage = () => {
         throw new Error(errData.detail || 'Invalid credentials');
       }
 
-      const data = await response.json();
-      localStorage.setItem('admin_token', data.access_token);
+      await response.json();
       navigate('/admin/dashboard');
     } catch (err) {
       console.error('Login Error:', err);
@@ -111,7 +111,7 @@ const AdminLoginPage = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                placeholder="********"
+                placeholder="••••••••"
               />
             </div>
 

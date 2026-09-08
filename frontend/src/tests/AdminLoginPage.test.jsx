@@ -65,7 +65,7 @@ describe('AdminLoginPage', () => {
         const mockFetch = vi.fn(() =>
             Promise.resolve({
                 ok: true,
-                json: () => Promise.resolve({ access_token: 'bypass_token' }),
+                json: () => Promise.resolve({ authenticated: true }),
             })
         );
         globalThis.fetch = mockFetch;
@@ -86,8 +86,6 @@ describe('AdminLoginPage', () => {
         fireEvent.click(submitButton);
 
         await waitFor(() => {
-            // Check if token was set (mocked behavior in component)
-            expect(localStorage.getItem('admin_token')).toBe('bypass_token');
             // Check navigation
             expect(mockNavigate).toHaveBeenCalledWith('/admin/dashboard');
         });

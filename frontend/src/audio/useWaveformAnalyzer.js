@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 
+const FRAME_INTERVAL_MS = 1000 / 30;
+
 /**
  * Custom hook for real-time audio waveform analysis.
  * Connects to a media stream and continuously extracts time-domain audio data
@@ -10,7 +12,6 @@ import { useEffect, useRef, useState } from 'react';
  */
 export const useWaveformAnalyzer = (stream) => {
   const [audioData, setAudioData] = useState(new Uint8Array(0));
-  const FRAME_INTERVAL_MS = 1000 / 30;
 
   // Refs to persist Web Audio API objects without causing re-renders
   const audioContextRef = useRef(null);
@@ -37,7 +38,6 @@ export const useWaveformAnalyzer = (stream) => {
       analyserRef.current = null;
       audioContextRef.current = null;
       lastFrameTimeRef.current = 0;
-      setAudioData(new Uint8Array(0));
       return;
     }
 

@@ -10,6 +10,8 @@ def create_admin_user():
         password = getpass("Admin password: ")
         if not email or not password:
             raise ValueError("Admin email and password are required")
+        if len(password) < 12:
+            raise ValueError("Admin password must contain at least 12 characters")
         
         user = session.query(User).filter(User.email == email).first()
         if user:

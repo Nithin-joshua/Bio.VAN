@@ -1,16 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Button from '../core/Button';
 import "../../styles/cyber-player.css";
 
 const VerificationResultModal = ({ result, onClose }) => {
-    const [isVisible, setIsVisible] = useState(false);
-
-    useEffect(() => {
-        const timer = setTimeout(() => setIsVisible(true), 10);
-        return () => clearTimeout(timer);
-    }, []);
-
     // Logic to determine Liveliness Status
     let livelinessText = 'PENDING';
     let livelinessColor = 'var(--text-secondary)';

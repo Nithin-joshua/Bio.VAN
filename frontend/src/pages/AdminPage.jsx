@@ -4,12 +4,12 @@ import Button from '../components/core/Button';
 import Logo from '../components/core/Logo';
 import Card from '../components/ui/Card';
 import SystemStatus from '../components/ui/SystemStatus';
-import { fetchRegisteredUsers, deleteUser } from '../api/admin.api';
+import { fetchRegisteredUsers, deleteUser, logoutAdmin } from '../api/admin.api';
 
 /**
  * Administrative Dashboard Page
  * Displays a secure registry of all users in the system.
- * Requires a valid JWT token in localStorage to access.
+ * Requires a valid server-managed admin session to access.
  */
 const AdminPage = () => {
     // Registry state management
@@ -21,18 +21,10 @@ const AdminPage = () => {
 
     // Verify authentication and fetch data on mount
     useEffect(() => {
-        const adminToken = localStorage.getItem('admin_token');
-
-        // Redirect to login if no token is present
-        if (!adminToken) {
-            navigate('/admin');
-            return;
-        }
-
         const populateRegistry = async () => {
             try {
                 // Fetch secure user list from backend
-                const registryData = await fetchRegisteredUsers(adminToken);
+                const registryData = await fetchRegisteredUsers();
                 setPersonnelRegistry(registryData);
             } catch (err) {
                 setAccessError(`Failed to load user registry: ${err.message}`);
@@ -52,7 +44,9 @@ const AdminPage = () => {
      * Clears local session and redirects to login
      */
     const handleAdminLogout = () => {
-        localStorage.removeItem('admin_token');
+        logoutAdmin().catch((error) => {
+            console.warn('Admin logout request failed:', error);
+        });
         navigate('/admin');
     };
 
@@ -62,8 +56,7 @@ const AdminPage = () => {
     const handleDeleteUser = async (userId) => {
         if (window.confirm(`Are you sure you want to PERMANENTLY delete user ${userId}? This cannot be undone.`)) {
             try {
-                const adminToken = localStorage.getItem('admin_token');
-                await deleteUser(userId, adminToken);
+                await deleteUser(userId);
 
                 // Refresh list
                 setPersonnelRegistry(prev => prev.filter(u => u.id !== userId));

@@ -21,7 +21,6 @@ import '../styles/cyber-player.css';
  */
 const VerifyPage = () => {
   const [verificationStatus, setVerificationStatus] = useState('idle');
-  const [similarityScore, setSimilarityScore] = useState(0);
   const [terminalLogs, setTerminalLogs] = useState([]);
   const [targetUserId, setTargetUserId] = useState('');
   const [showResultModal, setShowResultModal] = useState(false);
@@ -101,7 +100,6 @@ const VerifyPage = () => {
       appendTerminalLog('Finalizing verification...');
       await delay(800);
 
-      setSimilarityScore(result.similarity_score);
       setResultDetails(result);
 
       if (result.spoof) {
@@ -159,7 +157,6 @@ const VerifyPage = () => {
     setResultDetails(null);
     appendTerminalLog('PURGING SESSION CACHE...');
     setVerificationStatus('idle');
-    setSimilarityScore(0);
 
     fetchChallengePhrase().then(phrase => {
       setChallengePhrase(phrase);

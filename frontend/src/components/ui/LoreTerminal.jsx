@@ -46,7 +46,7 @@ const LoreTerminal = () => {
         timeoutId = setTimeout(typeChar, 500);
 
         return () => clearTimeout(timeoutId);
-    }, []);
+    }, [shouldReduceMotion]);
 
     // EFFECT: Random Metric Simulation
     // periodically updates the footer stats (Latency, Encryption, Node) to make the UI feel "live"

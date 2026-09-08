@@ -16,6 +16,7 @@ import numpy as np
 import librosa
 import re
 import json
+import re
 from loguru import logger
 
 from slowapi import Limiter, _rate_limit_exceeded_handler
@@ -90,6 +91,14 @@ async def verify_api_key(x_api_key: Optional[str] = Header(None)):
     logger.info("API key verified successfully")
     return x_api_key
 
+
+async def verify_csrf(request: Request):
+    if request.method in {"POST", "PUT", "PATCH", "DELETE"} and request.cookies.get("access_token"):
+        cookie_token = request.cookies.get("csrf_token")
+        header_token = request.headers.get("X-CSRF-Token")
+        if not cookie_token or not header_token or not hmac.compare_digest(cookie_token, header_token):
+            raise HTTPException(status_code=403, detail="CSRF validation failed")
+
 # -------------------------
 # App Initialization
 # -------------------------
@@ -125,7 +134,16 @@ async def log_requests(request: Request, call_next):
         return response
 
 app.include_router(auth_router)
-model = ECAPAModel()
+model: Optional[ECAPAModel] = None
+
+
+def require_speaker_model() -> ECAPAModel:
+    if model is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Speaker model is not ready.",
+        )
+    return model
 
 # -------------------------
 # Utilities for run_in_executor
@@ -139,6 +157,7 @@ async def save_upload_file(file: UploadFile, suffix: str = ".wav") -> str:
     """Persist an upload while enforcing a hard memory/disk bound."""
     total_size = 0
     with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
+        success = False
         try:
             while chunk := await file.read(1024 * 1024):
                 total_size += len(chunk)
@@ -148,11 +167,10 @@ async def save_upload_file(file: UploadFile, suffix: str = ".wav") -> str:
                         detail="Audio upload exceeds the maximum allowed size.",
                     )
                 tmp.write(chunk)
-        except Exception:
-            tmp.close()
-            if os.path.exists(tmp.name):
+            success = True
+        finally:
+            if not success and os.path.exists(tmp.name):
                 os.remove(tmp.name)
-            raise
         return tmp.name
 
 # Helper for run_in_threadpool which needs a function
@@ -166,14 +184,20 @@ def _verify_challenge_wrapper(path, phrase):
     return verify_challenge(path, phrase)
 
 def _model_extract(audio):
-    return model.extract_embedding(audio)
+    return require_speaker_model().extract_embedding(audio)
 
 # -------------------------
 # Startup Event
 # -------------------------
 @app.on_event("startup")
 def startup_event():
+    global model
     init_db()
+    try:
+        model = ECAPAModel()
+        logger.info("Speaker model initialized.")
+    except Exception as exc:
+        logger.error(f"Speaker model not available at startup: {exc}")
     try:
         init_milvus()
         logger.info("Database and Milvus initialized.")
@@ -185,7 +209,16 @@ def startup_event():
 # -------------------------
 @app.get("/health")
 def health():
-    return {"status": "OK"}
+    model_ready = bool(getattr(model, "model", None))
+    liveness_ready = bool(getattr(liveness_detector, "using_model", False))
+    return {
+        "status": "OK" if model_ready else "DEGRADED",
+        "ready": model_ready,
+        "components": {
+            "speaker_model": model_ready,
+            "liveness_model": liveness_ready,
+        },
+    }
 
 
 # -------------------------
@@ -233,6 +266,7 @@ async def check_liveness(request: Request, file: UploadFile = File(...)):
 async def process_enrollment_sample(file: UploadFile, sample_index: int, challenge_phrase: Optional[str] = None):
     """Process a single enrollment sample (audio verification)"""
     tmp_path = await save_upload_file(file)
+    speaker_model = require_speaker_model()
     
     try:
         # 1. Load Audio
@@ -250,7 +284,7 @@ async def process_enrollment_sample(file: UploadFile, sample_index: int, challen
             raise HTTPException(status_code=400, detail=f"Spoof detected in sample {sample_index+1}: {liveness['reason']}")
         
         # 4. Embedding Extraction
-        emb = await run_cpu_bound(model.extract_embedding, audio)
+        emb = await run_cpu_bound(speaker_model.extract_embedding, audio)
         return emb
     finally:
         if os.path.exists(tmp_path):
@@ -274,8 +308,18 @@ async def enroll(
         phrases_list = json.loads(challenge_phrases) if challenge_phrases else []
     except json.JSONDecodeError as exc:
         raise HTTPException(status_code=400, detail="Invalid challenge phrase payload.") from exc
+    if not re.fullmatch(r"[A-Za-z][A-Za-z .'-]{1,119}", full_name.strip()):
+        raise HTTPException(status_code=422, detail="Full name is invalid.")
+    if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", email):
+        raise HTTPException(status_code=422, detail="Email address is invalid.")
+    if password is not None and len(password) < 12:
+        raise HTTPException(status_code=422, detail="Password must contain at least 12 characters.")
     if role not in {"personnel", "researcher"}:
         raise HTTPException(status_code=403, detail="This enrollment flow cannot create privileged accounts.")
+    if not isinstance(phrases_list, list) or len(phrases_list) > 3 or any(
+        not isinstance(phrase, str) or not phrase.strip() for phrase in phrases_list
+    ):
+        raise HTTPException(status_code=422, detail="Challenge phrases must be a list of up to three non-empty strings.")
     samples = [sample_1, sample_2, sample_3]
     speaker_id = None
     voice_uuid = str(uuid.uuid4())
@@ -310,7 +354,7 @@ async def enroll(
 
         # VOICE VERIFICATION: Check if this voice already exists in Milvus
         # We re-normalize the mean embedding to ensure accurate cosine similarity
-        mean_embedding_np = model.normalize_embedding(np.mean(embeddings, axis=0))
+        mean_embedding_np = require_speaker_model().normalize_embedding(np.mean(embeddings, axis=0))
         mean_embedding = mean_embedding_np.tolist()
 
         logger.info(f"Verifying voice identity against existing database (Threshold: {DEDUPLICATION_THRESHOLD})")
@@ -412,7 +456,7 @@ async def verify(
                 return {"verified": False, "error_code": "CHALLENGE_FAILED"}
 
         # Inference (CPU Bound)
-        embedding = await run_cpu_bound(model.extract_embedding, audio)
+        embedding = await run_cpu_bound(require_speaker_model().extract_embedding, audio)
         
         # Search
         milvus_filter_id = None
@@ -471,7 +515,11 @@ async def list_users(current_user: UserResponse = Depends(get_current_admin_user
     return users
 
 @app.delete("/users/{user_id}")
-async def delete_user_endpoint(user_id: str, current_user: UserResponse = Depends(get_current_admin_user)):
+async def delete_user_endpoint(
+    user_id: str,
+    current_user: UserResponse = Depends(get_current_admin_user),
+    _csrf: None = Depends(verify_csrf),
+):
     try:
         logger.info(f"ADMIN: Attempting to delete user {user_id}")
         user = await run_cpu_bound(get_user_by_id, user_id)
@@ -490,7 +538,10 @@ async def delete_user_endpoint(user_id: str, current_user: UserResponse = Depend
         raise HTTPException(status_code=500, detail="Deletion failed; no database record was removed.")
 
 @app.post("/admin/purge-orphans")
-async def purge_orphans_endpoint(current_user: UserResponse = Depends(get_current_admin_user)):
+async def purge_orphans_endpoint(
+    current_user: UserResponse = Depends(get_current_admin_user),
+    _csrf: None = Depends(verify_csrf),
+):
     """Global maintenance: delete biometrics that have no owner in Postgres"""
     try:
         from database.sync_utils import purge_orphaned_biometrics

@@ -10,11 +10,15 @@ const useTypingEffect = (text, speed = 100, delay = 0) => {
     const [started, setStarted] = useState(false);
 
     useEffect(() => {
-        setDisplayedText('');
-        setStarted(false);
-
-        const timer = setTimeout(() => setStarted(true), delay);
-        return () => clearTimeout(timer);
+        const resetTimer = setTimeout(() => {
+            setDisplayedText('');
+            setStarted(false);
+        }, 0);
+        const startTimer = setTimeout(() => setStarted(true), delay);
+        return () => {
+            clearTimeout(resetTimer);
+            clearTimeout(startTimer);
+        };
     }, [delay, text]);
 
     useEffect(() => {

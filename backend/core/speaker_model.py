@@ -7,12 +7,13 @@ import numpy as np
 os.environ["HF_HUB_DISABLE_SYMLINKS"] = "1"
 os.environ["HF_HUB_DISABLE_SYMLINKS_WARNING"] = "1"
 
-from speechbrain.pretrained import SpeakerRecognition
 from config.settings import ECAPA_MODEL
 
 
 class ECAPAModel:
     def __init__(self):
+        from speechbrain.pretrained import SpeakerRecognition
+
         self.model = SpeakerRecognition.from_hparams(
             source=ECAPA_MODEL,
             savedir="pretrained_models/ecapa",
@@ -57,8 +58,7 @@ class ECAPAModel:
             return emb_np / norm
         return emb_np
 
-# Singleton instance
-ecapa_model = ECAPAModel()
+ecapa_model = None
 
 def get_embedding(audio_np: np.ndarray, sample_rate: int = 16000) -> list:
     """
@@ -73,4 +73,7 @@ def get_embedding(audio_np: np.ndarray, sample_rate: int = 16000) -> list:
     # but the test passes it. We'll accept it but ignore it if the class doesn't need it,
     # or better yet, verify if we need to check SR.
     # For now, just wrapper:
+    global ecapa_model
+    if ecapa_model is None:
+        ecapa_model = ECAPAModel()
     return ecapa_model.extract_embedding(audio_np)
