@@ -41,7 +41,13 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
 # API Key for System-wide Auth
-BIO_VAN_API_KEY = get_env_or_critical("BIO_VAN_API_KEY", "dev-key-123")
+BIO_VAN_API_KEY = os.getenv("BIO_VAN_API_KEY")
+if not BIO_VAN_API_KEY:
+    if ENVIRONMENT == "production":
+        print("CRITICAL ERROR: BIO_VAN_API_KEY must be set in production.")
+        sys.exit(1)
+    BIO_VAN_API_KEY = secrets.token_urlsafe(32)
+    print("WARN: BIO_VAN_API_KEY not set; generated ephemeral development key.")
 
 # ML Config
 ECAPA_MODEL = "speechbrain/spkrec-ecapa-voxceleb"
@@ -50,6 +56,7 @@ ADAPTIVE_THRESHOLD_MAX = 0.75
 VOSK_MODEL_PATH = os.getenv("VOSK_MODEL_PATH", "vosk_model")
 SAMPLE_RATE = 16000
 MIN_AUDIO_DURATION = 3.0
+MAX_UPLOAD_SIZE_BYTES = int(os.getenv("MAX_UPLOAD_SIZE_BYTES", str(10 * 1024 * 1024)))
 EMBEDDING_DIM = 192
 
 # Voice Verification Thresholds

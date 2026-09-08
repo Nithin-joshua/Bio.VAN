@@ -1,13 +1,15 @@
 from database.postgres_client import SessionLocal, User, init_db
 from core.security import get_password_hash
-from datetime import datetime
+from getpass import getpass
 
 def create_admin_user():
     init_db()
     session = SessionLocal()
     try:
-        email = "admin@biovan.internal"
-        password = "admin"
+        email = input("Admin email: ").strip()
+        password = getpass("Admin password: ")
+        if not email or not password:
+            raise ValueError("Admin email and password are required")
         
         user = session.query(User).filter(User.email == email).first()
         if user:
@@ -30,8 +32,6 @@ def create_admin_user():
         
         session.commit()
         print("Admin user configured successfully.")
-        print(f"Email: {email}")
-        print(f"Password: {password}")
         
     except Exception as e:
         print(f"Failed to create admin user: {e}")

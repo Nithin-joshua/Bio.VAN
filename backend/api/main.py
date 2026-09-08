@@ -1,4 +1,5 @@
 import asyncio
+import hmac
 import sys
 from fastapi import FastAPI, UploadFile, File, Form, HTTPException, Depends, Header, Request, Query, status
 from fastapi.responses import JSONResponse
@@ -29,10 +30,18 @@ from database.milvus_client import (
     init_milvus,
     search_embedding,
     insert_embedding,
-    check_embeddings_exist
+    check_embeddings_exist,
+    delete_embedding
 )
 from database.postgres_client import init_db, log_auth, create_user, get_user_by_voice_uuid, get_user_by_id, get_user_by_email, get_all_users, update_user_status, delete_user
-from config.settings import RE_ENROLLMENT_PERIOD_DAYS, BIO_VAN_API_KEY, VOICE_MATCH_THRESHOLD, CHALLENGE_MATCH_THRESHOLD, DEDUPLICATION_THRESHOLD
+from config.settings import (
+    RE_ENROLLMENT_PERIOD_DAYS,
+    BIO_VAN_API_KEY,
+    VOICE_MATCH_THRESHOLD,
+    CHALLENGE_MATCH_THRESHOLD,
+    DEDUPLICATION_THRESHOLD,
+    MAX_UPLOAD_SIZE_BYTES,
+)
 from api.auth import router as auth_router, get_current_active_user, get_current_admin_user
 from core.security import get_password_hash
 from schemas import UserResponse
@@ -60,25 +69,25 @@ async def verify_api_key(x_api_key: Optional[str] = Header(None)):
     # In development mode, API key is optional for easier testing
     if ENVIRONMENT == "development":
         if x_api_key:
-            logger.info(f"API Key provided in dev mode: {x_api_key[:10]}...")
+            logger.info("API key provided in development mode")
         else:
             logger.info("No API Key provided in dev mode - allowed")
         return x_api_key or "dev-mode"
     
     # In production, API key is mandatory
     if not x_api_key:
-        logger.warning(f"Missing API Key. Expected: {BIO_VAN_API_KEY}")
+        logger.warning("Missing API key")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Missing API Key"
         )
-    if x_api_key != BIO_VAN_API_KEY:
-        logger.warning(f"Invalid API Key attempt. Received: '{x_api_key}' | Expected: '{BIO_VAN_API_KEY}'")
+    if not hmac.compare_digest(x_api_key, BIO_VAN_API_KEY):
+        logger.warning("Invalid API key attempt")
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid API Key"
         )
-    logger.info(f"API Key verified successfully")
+    logger.info("API key verified successfully")
     return x_api_key
 
 # -------------------------
@@ -125,6 +134,27 @@ async def run_cpu_bound(func, *args):
     loop = asyncio.get_running_loop()
     return await loop.run_in_executor(None, func, *args)
 
+
+async def save_upload_file(file: UploadFile, suffix: str = ".wav") -> str:
+    """Persist an upload while enforcing a hard memory/disk bound."""
+    total_size = 0
+    with tempfile.NamedTemporaryFile(suffix=suffix, delete=False) as tmp:
+        try:
+            while chunk := await file.read(1024 * 1024):
+                total_size += len(chunk)
+                if total_size > MAX_UPLOAD_SIZE_BYTES:
+                    raise HTTPException(
+                        status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                        detail="Audio upload exceeds the maximum allowed size.",
+                    )
+                tmp.write(chunk)
+        except Exception:
+            tmp.close()
+            if os.path.exists(tmp.name):
+                os.remove(tmp.name)
+            raise
+        return tmp.name
+
 # Helper for run_in_threadpool which needs a function
 def _load_audio_file(path):
     return load_audio(path)
@@ -167,9 +197,7 @@ async def check_liveness(request: Request, file: UploadFile = File(...)):
     if not file.filename.lower().endswith(('.wav', '.webm', '.ogg', '.mp3')):
         raise HTTPException(status_code=400, detail=f"Unsupported format: {file.filename}") 
         
-    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
-        tmp.write(await file.read())
-        tmp_path = tmp.name
+    tmp_path = await save_upload_file(file)
 
     try:
         # Load audio (CPU Bound)
@@ -204,9 +232,7 @@ async def check_liveness(request: Request, file: UploadFile = File(...)):
 # -------------------------
 async def process_enrollment_sample(file: UploadFile, sample_index: int, challenge_phrase: Optional[str] = None):
     """Process a single enrollment sample (audio verification)"""
-    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
-        tmp.write(await file.read())
-        tmp_path = tmp.name
+    tmp_path = await save_upload_file(file)
     
     try:
         # 1. Load Audio
@@ -244,11 +270,17 @@ async def enroll(
     sample_3: UploadFile = File(...),
     challenge_phrases: Optional[str] = Form(None)
 ):
-    phrases_list = json.loads(challenge_phrases) if challenge_phrases else []
+    try:
+        phrases_list = json.loads(challenge_phrases) if challenge_phrases else []
+    except json.JSONDecodeError as exc:
+        raise HTTPException(status_code=400, detail="Invalid challenge phrase payload.") from exc
+    if role not in {"personnel", "researcher"}:
+        raise HTTPException(status_code=403, detail="This enrollment flow cannot create privileged accounts.")
     samples = [sample_1, sample_2, sample_3]
     speaker_id = None
     voice_uuid = str(uuid.uuid4())
 
+    inserted_embedding = False
     try:
         # CHECK FOR EXISTING ENROLLMENT
         existing_user = await run_cpu_bound(get_user_by_email, email)
@@ -317,6 +349,7 @@ async def enroll(
         try:
             # 2. Insert into Milvus
             await run_cpu_bound(insert_embedding, voice_uuid, mean_embedding)
+            inserted_embedding = True
             
             # 3. Mark as ACTIVE and SYNCED
             await run_cpu_bound(update_user_status, speaker_id, "active", True)
@@ -325,9 +358,14 @@ async def enroll(
             logger.info(f"Enrollment successful for {speaker_id}")
             return {"status": "success", "user_id": speaker_id}
             
-        except Exception as milvus_err:
+        except Exception as persistence_err:
             actual_id = user_obj.id if 'user_obj' in locals() and user_obj else speaker_id
-            logger.error(f"Milvus insert failed, rolling back Postgres record for {actual_id}: {milvus_err}")
+            logger.error(f"Enrollment persistence failed for {actual_id}: {persistence_err}")
+            if inserted_embedding:
+                try:
+                    await run_cpu_bound(delete_embedding, voice_uuid)
+                except Exception:
+                    logger.critical("Failed to remove biometric vector during enrollment rollback")
             await run_cpu_bound(delete_user, actual_id)
             raise HTTPException(status_code=500, detail="Persistence error; enrollment rolled back.")
 
@@ -351,9 +389,7 @@ async def verify(
     speaker_id: Optional[str] = Query(None),
     challenge_phrase: Optional[str] = Form(None)
 ):
-    with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
-        tmp.write(await file.read())
-        tmp_path = tmp.name
+    tmp_path = await save_upload_file(file)
 
     try:
         # Load & Check duration
@@ -438,19 +474,20 @@ async def list_users(current_user: UserResponse = Depends(get_current_admin_user
 async def delete_user_endpoint(user_id: str, current_user: UserResponse = Depends(get_current_admin_user)):
     try:
         logger.info(f"ADMIN: Attempting to delete user {user_id}")
-        voice_uuid = await run_cpu_bound(delete_user, user_id)
-        
+        user = await run_cpu_bound(get_user_by_id, user_id)
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        voice_uuid = user.voice_uuid
         if voice_uuid:
-            from database.milvus_client import delete_embedding
-            logger.info(f"ADMIN: User {user_id} had voice profile {voice_uuid}. Purging from Milvus...")
+            logger.info(f"ADMIN: Purging biometric profile for {user_id}...")
             await run_cpu_bound(delete_embedding, voice_uuid)
-        else:
-            logger.info(f"ADMIN: User {user_id} was not enrolled or had no voice profile. Partial purge skipped.")
-            
+        await run_cpu_bound(delete_user, user_id)
         return {"status": "success", "message": "User and linked biometrics purged."}
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"ADMIN ERROR: Deletion failed for {user_id}: {e}")
-        raise HTTPException(status_code=500, detail=f"Deletion failed: {str(e)}")
+        raise HTTPException(status_code=500, detail="Deletion failed; no database record was removed.")
 
 @app.post("/admin/purge-orphans")
 async def purge_orphans_endpoint(current_user: UserResponse = Depends(get_current_admin_user)):
@@ -464,7 +501,7 @@ async def purge_orphans_endpoint(current_user: UserResponse = Depends(get_curren
         raise HTTPException(status_code=500, detail="Purge procedure failed")
 
 @app.get("/challenge")
-async def get_challenge(count: int = 1):
+async def get_challenge(count: int = Query(1, ge=1, le=5)):
     """Returns one or more random phrases."""
     from core.challenge import generate_challenge
     phrases = generate_challenge(count)

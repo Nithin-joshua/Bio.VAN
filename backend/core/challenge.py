@@ -94,8 +94,8 @@ def verify_challenge(audio_path, target_phrase, threshold=50):
     try:
         model = get_asr_model()
         if model is None:
-            print("WARN: ASR model unavailable, skipping challenge verification")
-            return True, 0, "ASR_UNAVAILABLE"
+            print("ERROR: ASR model unavailable; rejecting challenge verification")
+            return False, 0, "ASR_UNAVAILABLE"
 
         import warnings
         with warnings.catch_warnings():

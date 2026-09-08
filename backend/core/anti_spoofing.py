@@ -8,7 +8,7 @@ except ImportError:
     welch = None
 
 from core.rawnet_model import RawNet2
-from config.settings import LIVENESS_THRESHOLD
+from config.settings import LIVENESS_THRESHOLD, ENVIRONMENT
 # Default RawNet2 Config (matches ASVspoof baseline)
 # Architecture parameters for the anti-spoofing model
 RAWNET_CONFIG = {
@@ -71,6 +71,16 @@ class LivenessDetector:
                  "status": "bad_audio",
                  "method": "Heuristic"
              }
+
+        if ENVIRONMENT == "production" and not self.using_model:
+            return {
+                "is_live": False,
+                "score": 0.0,
+                "confidence": 1.0,
+                "reason": "Liveness model unavailable",
+                "status": "service_unavailable",
+                "method": "Unavailable",
+            }
         
         # -------------------------
         # 1. Heuristic Pre-Checks
